@@ -1,4 +1,4 @@
-# GraphQL MCP Server Requirements Document
+# GraphQL Toolkit MCP Server Requirements Document
 
 ## Executive Summary
 
@@ -276,24 +276,33 @@ data/
 
 ## MVP vs Future Features
 
-### MVP Features (Phase 1)
+### Preliminary implementation (Phase 0)
 - Basic GraphQL execution (`execute_graphql_query`)
-- Query validation (`validate_graphql_query`)
-- Schema exploration (`get_schema_info`)
+- Bearer token authentication
+
+### MVP Features (Phase 1)
 - Basic tool creation (`create_saved_query_tool` with core parameters)
-- Context management (`set_graphql_context`, `list_graphql_context`, `clear_graphql_context`)
-- Tool management (`list_saved_tools`, `delete_saved_tool`, `describe_tool`)
 - Cross-session persistence (JSON file storage)
 - MCP list change notifications
 
-### Future Features (Phase 2+)
+### Version 1.0 (Phase 2)
+- Context management (`set_graphql_context`, `list_graphql_context`, `clear_graphql_context`)
+- Tool management (`list_saved_tools`, `delete_saved_tool`, `describe_tool`)
+
+### Subsequent development (Phase 3)
+- Custom type system (`create_graphql_type`, etc.)
+- Query validation (`validate_graphql_query`)
+- Schema exploration (`get_schema_info`)
+
+### Future Features (Phase 4+)
 - Advanced pagination configuration
 - Idempotency and caching
-- Custom type system (`create_graphql_type`, etc.)
 - Tool testing capabilities (`test_saved_tool`)
 - Tool update capabilities (`update_saved_tool`)
 - Enhanced error handling and debugging tools
 - Configurable datastore adapters
+- Query complexity analysis and execution timeouts
+- Support for other authentication methods
 
 ## Success Criteria
 
