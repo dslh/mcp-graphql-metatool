@@ -1,11 +1,14 @@
 {
   "name": "mcp-graphql-metatool",
   "version": "1.0.0",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix"
   },
   "author": "Doug Hammond <d.lakehammond@gmail.com>",
   "license": "MIT",
@@ -17,6 +20,10 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "eslint": "^9.31.0",
+    "eslint-config-prettier": "^10.1.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
