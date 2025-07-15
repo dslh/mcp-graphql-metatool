@@ -2,41 +2,14 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { GraphQLClient } from 'graphql-request';
 import { z } from 'zod';
-
-interface Config {
-  graphqlEndpoint: string;
-  authToken?: string;
-}
-
-function loadConfig(): Config {
-  const graphqlEndpoint = process.env.GRAPHQL_ENDPOINT;
-  const authToken = process.env.GRAPHQL_AUTH_TOKEN;
-
-  if (!graphqlEndpoint) {
-    throw new Error('GRAPHQL_ENDPOINT environment variable is required');
-  }
-
-  return {
-    graphqlEndpoint,
-    authToken,
-  };
-}
+import { client } from './client.js';
 
 async function main() {
   try {
-    const config = loadConfig();
-    
     const server = new McpServer({
       name: 'graphql-metatool',
       version: '1.0.0',
-    });
-
-    const client = new GraphQLClient(config.graphqlEndpoint, {
-      headers: config.authToken ? {
-        'Authorization': `Bearer ${config.authToken}`
-      } : {},
     });
 
     server.registerTool(
