@@ -6,6 +6,7 @@ import importPlugin from 'eslint-plugin-import';
 import securityPlugin from 'eslint-plugin-security';
 import sonarjsPlugin from 'eslint-plugin-sonarjs';
 import unicornPlugin from 'eslint-plugin-unicorn';
+import vitestPlugin from '@vitest/eslint-plugin';
 import prettierConfig from 'eslint-config-prettier';
 
 export default [
@@ -105,6 +106,27 @@ export default [
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-null': 'off',
       'unicorn/prefer-top-level-await': 'off',
+    },
+  },
+  {
+    files: ['test/**/*.{test,spec}.{js,ts,tsx}'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: './tsconfig.json',
+      },
+      globals: {
+        ...globals.node,
+        ...vitestPlugin.environments.env.globals,
+      },
+    },
+    plugins: {
+      vitest: vitestPlugin,
+    },
+    rules: {
+      ...vitestPlugin.configs.recommended.rules,
     },
   },
   prettierConfig,
