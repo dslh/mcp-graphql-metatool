@@ -3,9 +3,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+
 import { client } from './client.js';
 
-async function main() {
+async function main(): Promise<void> {
   try {
     const server = new McpServer({
       name: 'graphql-metatool',
@@ -55,6 +56,4 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+await main();
