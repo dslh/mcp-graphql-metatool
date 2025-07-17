@@ -1,60 +1,32 @@
 import { z } from 'zod';
 
 import { client } from './client.js';
+import { withErrorHandling, type Logger } from './responses.js';
 import type { SavedToolConfig } from './types.js';
 
 export function createDynamicToolHandler(toolConfig: SavedToolConfig) {
   const paramSchema = createZodSchemaFromJsonSchema(toolConfig.parameter_schema);
   
   return async (params: Record<string, any>): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
-    try {
-      const validatedParams = paramSchema.parse(params);
-      
-      const variables = extractVariables(toolConfig.graphql_query, validatedParams);
-      
-      const result = await client.request(toolConfig.graphql_query, variables);
-      
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(result, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Parameter validation error in tool '${toolConfig.name}': ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
-            },
-          ],
-          isError: true,
-        };
+    return withErrorHandling(`executing tool '${toolConfig.name}'`, async (log: Logger) => {
+      log('validating parameters');
+      let validatedParams;
+      try {
+        validatedParams = paramSchema.parse(params);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          throw new Error(`Parameter validation error: ${error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
+        }
+        throw error;
       }
       
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log('extracting variables');
+      const variables = extractVariables(toolConfig.graphql_query, validatedParams);
       
-      const isGraphQLError = error instanceof Error && (
-        error.message.includes('GraphQL') || 
-        error.message.includes('query') || 
-        error.message.includes('syntax')
-      );
-      
-      const errorType = isGraphQLError ? 'GraphQL query execution error' : 'Tool execution error';
-      
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `${errorType} in tool '${toolConfig.name}': ${errorMessage}\n\nTool definition:\n- Query: ${toolConfig.graphql_query}\n- Variables: ${toolConfig.variables.join(', ')}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+      log('executing GraphQL query');
+      const result = await client.request(toolConfig.graphql_query, variables);
+      return JSON.stringify(result, null, 2);
+    });
   };
 }
 
