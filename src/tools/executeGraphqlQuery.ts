@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { client } from '../client.js';
-import { withErrorHandling, type Logger } from '../responses.js';
+import { withErrorHandling } from '../responses.js';
 
 export const name = 'execute_graphql_query';
 
