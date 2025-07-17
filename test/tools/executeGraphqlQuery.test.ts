@@ -64,7 +64,7 @@ describe('executeGraphqlQuery handler', () => {
       content: [
         {
           type: 'text',
-          text: 'GraphQL Error: GraphQL validation error: Field "invalidField" does not exist',
+          text: 'Error executing GraphQL query: GraphQL validation error: Field "invalidField" does not exist',
         },
       ],
       isError: true,
@@ -84,7 +84,7 @@ describe('executeGraphqlQuery handler', () => {
       content: [
         {
           type: 'text',
-          text: 'GraphQL Error: Network error: Failed to fetch',
+          text: 'Error executing GraphQL query: Network error: Failed to fetch',
         },
       ],
       isError: true,
@@ -103,7 +103,7 @@ describe('executeGraphqlQuery handler', () => {
       content: [
         {
           type: 'text',
-          text: 'GraphQL Error: Unknown error',
+          text: 'Error executing GraphQL query: Unknown error',
         },
       ],
       isError: true,
