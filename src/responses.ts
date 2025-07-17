@@ -38,13 +38,16 @@ export function createErrorResponse(operation: string, error: unknown): MCPRespo
 
 export type Logger = (msg: string) => void;
 type HandledFn = (log: Logger) => string;
+type AsyncHandledFn = (log: Logger) => Promise<string>;
 
 /**
  * Wraps arbitrary code to return responses in MCP format.
  *
  * Provides a logger that also enhances error messages sent back to the agent.
  */
-export function withErrorHandling(operation: string, fn: HandledFn): MCPResponse {
+export function withErrorHandling(operation: string, fn: HandledFn): MCPResponse;
+export function withErrorHandling(operation: string, fn: AsyncHandledFn): Promise<MCPResponse>;
+export function withErrorHandling(operation: string, fn: HandledFn | AsyncHandledFn): MCPResponse | Promise<MCPResponse> {
   console.log(`Started ${operation}`);
 
   let stage = '';
@@ -54,10 +57,21 @@ export function withErrorHandling(operation: string, fn: HandledFn): MCPResponse
   }
 
   try {
-    return createSuccessResponse(fn(log));
-  } catch (error) {
-    return createErrorResponse(`${operation}${stage}`, error);
-  } finally {
+    const result = fn(log);
+    
+    // Check if the result is a Promise
+    if (result instanceof Promise) {
+      return result
+        .then(value => createSuccessResponse(value))
+        .catch(error => createErrorResponse(`${operation}${stage}`, error))
+        .finally(() => console.log(`Finished ${operation}`));
+    }
+    
+    // Synchronous case
     console.log(`Finished ${operation}`);
+    return createSuccessResponse(result);
+  } catch (error) {
+    console.log(`Finished ${operation}`);
+    return createErrorResponse(`${operation}${stage}`, error);
   }
 }

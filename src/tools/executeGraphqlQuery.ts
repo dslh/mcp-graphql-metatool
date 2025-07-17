@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { client } from '../client.js';
+import { withErrorHandling, type Logger } from '../responses.js';
 
 export const name = 'execute_graphql_query';
 
@@ -12,31 +13,13 @@ export const config = {
   },
 };
 
-export const handler = async ({
+export const handler = ({
   query,
 }: {
   query: string;
 }): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
-  try {
+  return withErrorHandling('executing GraphQL query', async () => {
     const result = await client.request(query);
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: `GraphQL Error: ${errorMessage}`,
-        },
-      ],
-      isError: true,
-    };
-  }
+    return JSON.stringify(result, null, 2);
+  });
 };
