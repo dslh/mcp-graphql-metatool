@@ -2,6 +2,8 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { createDynamicToolHandler } from '../dynamicToolHandler.js';
+import { withErrorHandling, type Logger } from '../responses.js';
+import { saveToolToFile } from '../storage.js';
 import type { CreateSavedQueryToolParams, SavedToolConfig } from '../types.js';
 
 export const name = 'create_saved_query_tool';
@@ -29,31 +31,34 @@ export const config = {
   },
 };
 
+function registerToolWithServer(
+  server: McpServer,
+  toolName: string,
+  toolConfig: SavedToolConfig,
+  existingTools: Map<string, SavedToolConfig>
+): void {
+  const dynamicHandler = createDynamicToolHandler(toolConfig);
+
+  const dynamicToolConfig = {
+    title: toolConfig.description,
+    description: toolConfig.description,
+    inputSchema: createZodSchemaFromJsonSchema(toolConfig.parameter_schema),
+  };
+
+  server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
+  existingTools.set(toolName, toolConfig);
+}
+
 export function createHandler(server: McpServer, existingTools: Map<string, SavedToolConfig>) {
   return (params: CreateSavedQueryToolParams): { content: { type: 'text'; text: string }[]; isError?: boolean } => {
-    try {
+    return withErrorHandling(`creating tool '${params.tool_name}'`, (log: Logger) => {
       if (existingTools.has(params.tool_name)) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Tool with name '${params.tool_name}' already exists`,
-            },
-          ],
-          isError: true,
-        };
+        throw new Error(`Tool with name '${params.tool_name}' already exists`);
       }
 
+      log('parsing params');
       if (!isValidJsonSchema(params.parameter_schema)) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: 'Invalid parameter_schema: must be a valid JSON Schema object',
-            },
-          ],
-          isError: true,
-        };
+        throw new Error('Invalid parameter_schema: must be a valid JSON Schema object');
       }
 
       const variables = extractGraphQLVariables(params.graphql_query);
@@ -68,38 +73,16 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
         variables,
       };
 
-      const dynamicHandler = createDynamicToolHandler(toolConfig);
+      // Persist first for atomicity
+      log('persisting file');
+      saveToolToFile(params.tool_name, toolConfig);
 
-      const dynamicToolConfig = {
-        title: params.description,
-        description: params.description,
-        inputSchema: createZodSchemaFromJsonSchema(params.parameter_schema),
-      };
+      // Then register with server
+      log('registering tool in MCP server');
+      registerToolWithServer(server, params.tool_name, toolConfig, existingTools);
 
-      server.registerTool(params.tool_name, dynamicToolConfig, dynamicHandler);
-
-      existingTools.set(params.tool_name, toolConfig);
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Successfully created tool '${params.tool_name}' with ${variables.length} variables: ${variables.join(', ')}`,
-          },
-        ],
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Failed to create tool: ${errorMessage}`,
-          },
-        ],
-        isError: true,
-      };
-    }
+      return `Successfully created tool '${params.tool_name}' with ${variables.length} variables: ${variables.join(', ')}`;
+    });
   };
 }
 
@@ -120,7 +103,7 @@ function isValidJsonSchema(schema: any): boolean {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): Record<string, z.ZodSchema> {
+export function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): Record<string, z.ZodSchema> {
   const schemaFields: Record<string, z.ZodSchema> = {};
 
   if (jsonSchema['type'] === 'object' && Boolean(jsonSchema['properties'])) {
