@@ -30,7 +30,7 @@ export const config = {
 };
 
 export function createHandler(server: McpServer, existingTools: Map<string, SavedToolConfig>) {
-  return async (params: CreateSavedQueryToolParams): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
+  return (params: CreateSavedQueryToolParams): { content: { type: 'text'; text: string }[]; isError?: boolean } => {
     try {
       if (existingTools.has(params.tool_name)) {
         return {
@@ -57,7 +57,7 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
       }
 
       const variables = extractGraphQLVariables(params.graphql_query);
-      
+
       const toolConfig: SavedToolConfig = {
         name: params.tool_name,
         description: params.description,
@@ -69,7 +69,7 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
       };
 
       const dynamicHandler = createDynamicToolHandler(toolConfig);
-      
+
       const dynamicToolConfig = {
         title: params.description,
         description: params.description,
@@ -77,7 +77,7 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
       };
 
       server.registerTool(params.tool_name, dynamicToolConfig, dynamicHandler);
-      
+
       existingTools.set(params.tool_name, toolConfig);
 
       return {
@@ -110,28 +110,28 @@ function extractGraphQLVariables(query: string): string[] {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isValidJsonSchema(schema: any): boolean {
-  if (!schema || typeof schema !== 'object') return false;
-  
+  if (schema === null || schema === undefined || typeof schema !== 'object') return false;
+
   if (schema['type'] === 'object') {
     return Boolean(schema['properties']) && typeof schema['properties'] === 'object';
   }
-  
+
   return true;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): Record<string, z.ZodSchema> {
   const schemaFields: Record<string, z.ZodSchema> = {};
-  
+
   if (jsonSchema['type'] === 'object' && Boolean(jsonSchema['properties'])) {
-     
     for (const [key, value] of Object.entries(jsonSchema['properties'])) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const propSchema = value as Record<string, any>;
+      // eslint-disable-next-line security/detect-object-injection
       schemaFields[key] = createZodFieldFromJsonSchema(propSchema);
     }
   }
-  
+
   return schemaFields;
 }
 
@@ -151,7 +151,8 @@ function createZodFieldFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSch
       return z.boolean();
     }
     case 'array': {
-      const itemSchema = jsonSchema['items'] ? createZodFieldFromJsonSchema(jsonSchema['items']) : z.any();
+      const itemSchema =
+        jsonSchema['items'] === undefined ? z.any() : createZodFieldFromJsonSchema(jsonSchema['items']);
       return z.array(itemSchema);
     }
     default: {

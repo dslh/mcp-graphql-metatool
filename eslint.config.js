@@ -19,7 +19,7 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: './tsconfig.json',
+        project: './tsconfig.eslint.json',
       },
       globals: {
         ...globals.node,
@@ -106,6 +106,16 @@ export default [
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-null': 'off',
       'unicorn/prefer-top-level-await': 'off',
+
+      // Whitespace and formatting rules
+      'no-trailing-spaces': 'error',
+      'no-multiple-empty-lines': ['error', { max: 2, maxEOF: 1 }],
+      'eol-last': 'error',
+      'comma-dangle': ['error', 'always-multiline'],
+      'no-tabs': 'error',
+      'indent': ['error', 2],
+      'quotes': ['error', 'single'],
+      'semi': ['error', 'always'],
     },
   },
   {
@@ -115,7 +125,7 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: './tsconfig.json',
+        project: './tsconfig.eslint.json',
       },
       globals: {
         ...globals.node,

@@ -26,6 +26,7 @@ async function main(): Promise<void> {
     server.registerTool(createSavedQueryTool.name, createSavedQueryTool.config, createSavedQueryTool.createHandler(server, existingTools));
 
     const transport = new StdioServerTransport();
+    console.log('Starting GraphQL MCP Metatool');
     await server.connect(transport);
   } catch (error) {
     console.error('Failed to start GraphQL MCP server:', error);

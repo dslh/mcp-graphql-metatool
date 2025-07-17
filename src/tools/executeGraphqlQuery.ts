@@ -12,7 +12,11 @@ export const config = {
   },
 };
 
-export const handler = async ({ query }: { query: string }): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
+export const handler = async ({
+  query,
+}: {
+  query: string;
+}): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
   try {
     const result = await client.request(query);
     return {
