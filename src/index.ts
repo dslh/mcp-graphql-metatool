@@ -3,12 +3,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
+import { createDynamicToolHandler } from './dynamicToolHandler.js';
+import { loadAllTools } from './storage.js';
 import * as createSavedQueryTool from './tools/createSavedQueryTool.js';
 import { createZodSchemaFromJsonSchema } from './tools/createSavedQueryTool.js';
-import { loadAllTools } from './storage.js';
-import { createDynamicToolHandler } from './dynamicToolHandler.js';
-import { SavedToolConfig } from './types.js';
+import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
+import type { SavedToolConfig } from './types.js';
 
 function registerAllTools(server: McpServer): Map<string, SavedToolConfig> {
   const existingTools = loadAllTools();

@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-import { SavedToolConfig } from './types.js';
+import type { SavedToolConfig } from './types.js';
 
 const DATA_DIR = './data';
 const TOOLS_DIR = join(DATA_DIR, 'tools');

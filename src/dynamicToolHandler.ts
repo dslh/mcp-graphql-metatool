@@ -1,6 +1,7 @@
 import { z } from 'zod';
+
 import { client } from './client.js';
-import { SavedToolConfig } from './types.js';
+import type { SavedToolConfig } from './types.js';
 
 export function createDynamicToolHandler(toolConfig: SavedToolConfig) {
   const paramSchema = createZodSchemaFromJsonSchema(toolConfig.parameter_schema);
@@ -63,7 +64,7 @@ function extractVariables(query: string, params: Record<string, any>): Record<st
   const variableMatches = query.match(/\$(\w+)/g) || [];
   
   for (const match of variableMatches) {
-    const variableName = match.substring(1);
+    const variableName = match.slice(1);
     if (params[variableName] !== undefined) {
       variables[variableName] = params[variableName];
     }
@@ -87,18 +88,24 @@ function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSc
 
 function createZodFieldFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSchema {
   switch (jsonSchema['type']) {
-    case 'string':
+    case 'string': {
       return z.string();
-    case 'number':
+    }
+    case 'number': {
       return z.number();
-    case 'integer':
+    }
+    case 'integer': {
       return z.number().int();
-    case 'boolean':
+    }
+    case 'boolean': {
       return z.boolean();
-    case 'array':
+    }
+    case 'array': {
       const itemSchema = jsonSchema['items'] ? createZodFieldFromJsonSchema(jsonSchema['items']) : z.any();
       return z.array(itemSchema);
-    default:
+    }
+    default: {
       return z.any();
+    }
   }
 }
