@@ -16,6 +16,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ### 1. Direct GraphQL Execution
 
 #### 1.1 Basic Query Execution
+
 - **Tool**: `execute_graphql_query(query, variables=null)`
 - **Purpose**: Execute arbitrary GraphQL queries against the configured endpoint
 - **Returns**: Raw GraphQL response including data and errors
@@ -25,6 +26,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
   - Proper error handling and propagation
 
 #### 1.2 Query Validation
+
 - **Tool**: `validate_graphql_query(query, variables=null)`
 - **Purpose**: Validate GraphQL syntax and schema compliance without execution
 - **Returns**: Validation results with detailed error messages
@@ -34,6 +36,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
   - Provide actionable error messages
 
 #### 1.3 Schema Exploration
+
 - **Tool**: `get_schema_info(type_name=null)`
 - **Purpose**: Explore GraphQL schema structure interactively
 - **Parameters**: Optional type name to get details for specific type
@@ -46,9 +49,11 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ### 2. Dynamic Tool Creation
 
 #### 2.1 Tool Creation
+
 - **Tool**: `create_saved_query_tool(tool_name, description, graphql_query, parameter_schema, pagination_config=null, idempotency=null)`
 
 **Parameters**:
+
 - `tool_name`: Snake_case name for the new tool
 - `description`: Human-readable description of tool functionality
 - `graphql_query`: GraphQL query with $variable placeholders
@@ -57,6 +62,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 - `idempotency`: Optional caching configuration
 
 **Requirements**:
+
 - Validate tool name uniqueness
 - Support parameter validation through JSON Schema
 - Reference custom types created via `create_graphql_type`
@@ -66,6 +72,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 #### 2.2 Advanced Features
 
 **Pagination Configuration**:
+
 ```json
 {
   "enabled": true,
@@ -76,6 +83,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ```
 
 **Idempotency**:
+
 ```json
 {
   "enabled": true,
@@ -85,6 +93,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ```
 
 #### 2.3 Tool Management
+
 - **Tool**: `list_saved_tools()`
 - **Tool**: `update_saved_tool(tool_name, ...parameters_to_update)`
 - **Tool**: `delete_saved_tool(tool_name)`
@@ -92,14 +101,16 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 - **Tool**: `test_saved_tool(tool_name, parameters)` - Execute tool for testing purposes
 
 #### 2.4 Tool Testing
+
 - **Purpose**: Execute saved tools with explicit testing semantics
-- **Test Semantics**: 
+- **Test Semantics**:
   - Include "TEST MODE" indicator in response
   - Enhanced error details including tool definition context
   - Optional parameter validation preview before execution
   - Separate logging/metrics tracking for test vs production usage
 
 #### 2.5 Tool Execution Error Handling
+
 - **Requirements**:
   - Return both tool-level errors (parameter validation, configuration issues) and underlying GraphQL errors
   - Include tool definition context in error responses for debugging
@@ -109,6 +120,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ### 3. Context Management
 
 #### 3.1 Setting Context
+
 - **Tool**: `set_graphql_context(key, value)`
 - **Purpose**: Set session-level variables that can be automatically injected into queries
 - **Examples**: workspace IDs, user IDs, default parameters
@@ -118,11 +130,13 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
   - Allow overriding in individual tool calls
 
 #### 3.2 Context Inspection
+
 - **Tool**: `list_graphql_context()`
 - **Purpose**: Display all currently set context variables
 - **Returns**: Key-value pairs of context variables
 
 #### 3.3 Context Management
+
 - **Tool**: `clear_graphql_context(key=null)`
 - **Purpose**: Remove specific context variable or all context if key is null
 - **Requirements**: Graceful handling of non-existent keys
@@ -130,6 +144,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ### 4. Dynamic Type System
 
 #### 4.1 Type Creation
+
 - **Tool**: `create_graphql_type(type_name, type_definition)`
 - **Purpose**: Create reusable parameter types, especially enumerations
 - **Parameters**:
@@ -141,6 +156,7 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
   - Prevention of type name conflicts
 
 #### 4.2 Type Management
+
 - **Tool**: `list_graphql_types()`
 - **Purpose**: List all created custom types
 - **Returns**: Type names with their definitions
@@ -154,32 +170,34 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 ### 1. Server Configuration
 
 #### 1.1 Startup Configuration
+
 ```yaml
-graphql_endpoint: "https://api.example.com/graphql"
+graphql_endpoint: 'https://api.example.com/graphql'
 authentication:
-  type: "bearer|api_key|header"
-  value: "${ENV_VAR_NAME}"
-  header_name: "Authorization" # for header auth
+  type: 'bearer|api_key|header'
+  value: '${ENV_VAR_NAME}'
+  header_name: 'Authorization' # for header auth
 
 # Pre-configured context variables
 context_variables:
-  WORKSPACE_ID: "workspace_123"
-  CURRENT_USER: "john_doe"
+  WORKSPACE_ID: 'workspace_123'
+  CURRENT_USER: 'john_doe'
 
 # Pre-configured enumerations
 enumerations:
   workspace_users:
-    - {name: "John Doe", value: "john_doe"}
-    - {name: "Jane Smith", value: "jane_smith"}
+    - { name: 'John Doe', value: 'john_doe' }
+    - { name: 'Jane Smith', value: 'jane_smith' }
 
 # Pre-configured mappings
 mappings:
   pipeline_name_to_id:
-    "Backlog": "pipeline_1"
-    "In Progress": "pipeline_2"
+    'Backlog': 'pipeline_1'
+    'In Progress': 'pipeline_2'
 ```
 
 #### 1.2 Schema Introspection
+
 - Cache GraphQL schema on startup
 - Support schema refresh without restart
 - Use schema for query validation
@@ -187,17 +205,20 @@ mappings:
 ### 2. Data Persistence
 
 #### 2.1 Cross-Session Persistence
+
 - Custom tools persist across sessions
-- Custom types persist across sessions  
+- Custom types persist across sessions
 - Storage implementation: JSON files in configurable directory for MVP
 - Future enhancement: Configurable datastore adapters
 
 #### 2.2 Context Persistence
+
 - Context variables persist within session by default
 - Optional configuration for cross-session context persistence
 - Configurable per context variable or global setting
 
 #### 2.3 File Structure (MVP)
+
 ```
 data/
 ├── tools/
@@ -213,11 +234,13 @@ data/
 ### 3. Error Handling
 
 #### 3.1 GraphQL Errors
+
 - Return both GraphQL and HTTP errors
 - Include query and variables in error context
 - Provide actionable error messages
 
 #### 3.2 Tool Creation Errors
+
 - Validate tool definitions before creation
 - Provide specific validation error messages
 - Prevent creation of invalid tools
@@ -225,28 +248,33 @@ data/
 ## Non-Functional Requirements
 
 ### 1. Performance
+
 - Query response time under 5 seconds for typical queries
 - Pagination should handle large result sets efficiently
 - Schema caching to avoid repeated introspection calls
 
 ### 2. Security
+
 - Support standard GraphQL authentication methods
 - Validate all user inputs
 - Prevent GraphQL injection attacks
 - Rate limiting for query execution
 
 ### 3. Reliability
+
 - Graceful handling of network failures
 - Proper connection management
 - Retry logic for transient failures
 
 ### 4. Usability
+
 - Clear, descriptive error messages
 - Consistent naming conventions
 - Intuitive parameter structures
 - Comprehensive tool descriptions
 
 ### 5. MCP Protocol Compliance
+
 - **Tool Capability Declaration**: Server must declare `listChanged: true` in capabilities
 - **List Change Notifications**: Emit list changed notifications when:
   - Tools are created via `create_saved_query_tool`
@@ -257,18 +285,21 @@ data/
 ## User Workflows
 
 ### 1. Initial Setup Workflow
+
 1. Agent calls `list_graphql_context()` to understand available context
 2. Agent sets additional context via `set_graphql_context()` if needed
 3. Agent explores API via `execute_graphql_query()` with introspection queries
 4. Agent creates custom types via `create_graphql_type()` for common enumerations
 
 ### 2. Tool Creation Workflow
+
 1. Agent develops and tests query using `execute_graphql_query()`
 2. Agent optionally validates query using `validate_graphql_query()`
 3. Agent creates tool using `create_saved_query_tool()` with appropriate configuration
 4. Agent tests new tool and updates if necessary
 
 ### 3. Daily Usage Workflow
+
 1. Agent uses saved tools for common operations
 2. Agent creates new tools for novel requirements
 3. Agent manages tool library via list/delete operations
@@ -277,24 +308,29 @@ data/
 ## MVP vs Future Features
 
 ### Preliminary implementation (Phase 0)
+
 - Basic GraphQL execution (`execute_graphql_query`)
 - Bearer token authentication
 
 ### MVP Features (Phase 1)
+
 - Basic tool creation (`create_saved_query_tool` with core parameters)
 - Cross-session persistence (JSON file storage)
 - MCP list change notifications
 
 ### Version 1.0 (Phase 2)
+
 - Context management (`set_graphql_context`, `list_graphql_context`, `clear_graphql_context`)
 - Tool management (`list_saved_tools`, `delete_saved_tool`, `describe_tool`)
 
 ### Subsequent development (Phase 3)
+
 - Custom type system (`create_graphql_type`, etc.)
 - Query validation (`validate_graphql_query`)
 - Schema exploration (`get_schema_info`)
 
 ### Future Features (Phase 4+)
+
 - Advanced pagination configuration
 - Idempotency and caching
 - Tool testing capabilities (`test_saved_tool`)
