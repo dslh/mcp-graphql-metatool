@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 import { client } from './client.js';
+import { convertJsonSchemaToZod } from './jsonSchemaValidator.js';
 import { withErrorHandling, type Logger } from './responses.js';
 import type { SavedToolConfig } from './types.js';
 
 export function createDynamicToolHandler(toolConfig: SavedToolConfig) {
-  const paramSchema = createZodSchemaFromJsonSchema(toolConfig.parameter_schema);
+  const paramSchema = convertJsonSchemaToZod(toolConfig.parameter_schema);
   
   return async (params: Record<string, any>): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
     return withErrorHandling(`executing tool '${toolConfig.name}'`, async (log: Logger) => {
@@ -45,39 +46,3 @@ function extractVariables(query: string, params: Record<string, any>): Record<st
   return variables;
 }
 
-function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSchema {
-  const schemaFields: Record<string, z.ZodSchema> = {};
-  
-  if (jsonSchema['type'] === 'object' && jsonSchema['properties']) {
-    for (const [key, value] of Object.entries(jsonSchema['properties'])) {
-      const propSchema = value as Record<string, any>;
-      schemaFields[key] = createZodFieldFromJsonSchema(propSchema);
-    }
-  }
-  
-  return z.object(schemaFields);
-}
-
-function createZodFieldFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSchema {
-  switch (jsonSchema['type']) {
-    case 'string': {
-      return z.string();
-    }
-    case 'number': {
-      return z.number();
-    }
-    case 'integer': {
-      return z.number().int();
-    }
-    case 'boolean': {
-      return z.boolean();
-    }
-    case 'array': {
-      const itemSchema = jsonSchema['items'] ? createZodFieldFromJsonSchema(jsonSchema['items']) : z.any();
-      return z.array(itemSchema);
-    }
-    default: {
-      return z.any();
-    }
-  }
-}

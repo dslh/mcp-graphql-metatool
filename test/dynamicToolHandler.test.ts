@@ -468,10 +468,120 @@ describe('dynamicToolHandler', () => {
 
       const handler = createDynamicToolHandler(toolConfig);
       
-      // Should create empty object schema when not an object type
+      // Should handle the schema conversion gracefully - the converted schema expects a string
       vi.mocked(client.request).mockResolvedValue({});
-      const result = await handler({});
+      const result = await handler('valid string'); // Pass a string since schema expects string
       expect(result.isError).toBeUndefined();
+    });
+
+    it('should handle json-schema-to-zod conversion for complex schemas', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'complex_conversion_test',
+        description: 'Test complex schema conversion',
+        graphql_query: 'query Test($data: ComplexInput!) { test(data: $data) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                user: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    profile: {
+                      type: 'object',
+                      properties: {
+                        email: { type: 'string', format: 'email' },
+                        age: { type: 'integer', minimum: 0 },
+                        tags: {
+                          type: 'array',
+                          items: { type: 'string' },
+                        },
+                      },
+                      required: ['email'],
+                    },
+                  },
+                  required: ['id', 'profile'],
+                },
+                metadata: {
+                  type: 'object',
+                  additionalProperties: { type: 'string' },
+                },
+              },
+              required: ['user'],
+            },
+          },
+          required: ['data'],
+        },
+        variables: ['data'],
+      };
+
+      const handler = createDynamicToolHandler(toolConfig);
+
+      const validComplexData = {
+        data: {
+          user: {
+            id: 'user123',
+            profile: {
+              email: 'test@example.com',
+              age: 25,
+              tags: ['developer', 'javascript'],
+            },
+          },
+          metadata: {
+            source: 'api',
+            version: '1.0',
+          },
+        },
+      };
+
+      vi.mocked(client.request).mockResolvedValue({ success: true });
+      const result = await handler(validComplexData);
+      expect(result.isError).toBeUndefined();
+      expect(client.request).toHaveBeenCalledWith(
+        toolConfig.graphql_query,
+        validComplexData
+      );
+    });
+
+    it('should handle schema validation errors with improved error messages', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'validation_error_test',
+        description: 'Test validation error handling',
+        graphql_query: 'query Test($user: UserInput!) { test(user: $user) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            user: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                email: { type: 'string', format: 'email' },
+                age: { type: 'integer', minimum: 0 },
+              },
+              required: ['id', 'email'],
+            },
+          },
+          required: ['user'],
+        },
+        variables: ['user'],
+      };
+
+      const handler = createDynamicToolHandler(toolConfig);
+
+      // Test with missing required fields
+      const invalidData = {
+        user: {
+          // Missing id and email (required fields)
+          age: 25,
+        },
+      };
+
+      const result = await handler(invalidData);
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Parameter validation error');
+      expect(client.request).not.toHaveBeenCalled();
     });
 
     it('should handle schema with missing properties', async () => {

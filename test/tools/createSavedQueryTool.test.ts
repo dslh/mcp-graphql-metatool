@@ -161,6 +161,121 @@ describe('createSavedQueryTool', () => {
     expect(result.content[0]?.text).toContain('Invalid parameter_schema');
   });
 
+  it('should reject malformed JSON schemas', () => {
+    const invalidSchemas = [
+      null,
+      undefined,
+      123,
+      'string',
+      [],
+      { type: 'invalid_type' },
+      { properties: 'should be object' },
+    ];
+
+    for (const invalidSchema of invalidSchemas) {
+      const params = {
+        tool_name: 'test_invalid',
+        description: 'Test tool',
+        graphql_query: 'query { test }',
+        parameter_schema: invalidSchema,
+      };
+
+      const result = handler(params);
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Invalid parameter_schema');
+    }
+  });
+
+  it('should accept complex valid JSON schemas', () => {
+    const complexSchema = {
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            profile: {
+              type: 'object',
+              properties: {
+                email: { type: 'string', format: 'email' },
+                age: { type: 'integer', minimum: 0 },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                },
+              },
+            },
+          },
+          required: ['id'],
+        },
+        metadata: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+      required: ['user'],
+    };
+
+    const params = {
+      tool_name: 'complex_schema_tool',
+      description: 'Tool with complex schema',
+      graphql_query: 'query GetUser($user: UserInput!) { user(input: $user) { id name } }',
+      parameter_schema: complexSchema,
+    };
+
+    const result = handler(params);
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('Successfully created tool');
+    expect(saveToolToFile).toHaveBeenCalledWith(
+      'complex_schema_tool',
+      expect.objectContaining({
+        parameter_schema: complexSchema,
+      })
+    );
+  });
+
+  it('should handle schemas with advanced JSON Schema features', () => {
+    const advancedSchema = {
+      type: 'object',
+      properties: {
+        status: {
+          enum: ['active', 'inactive', 'pending'],
+        },
+        priority: {
+          anyOf: [
+            { type: 'string', enum: ['low', 'medium', 'high'] },
+            { type: 'integer', minimum: 1, maximum: 10 },
+          ],
+        },
+        filters: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              field: { type: 'string' },
+              operator: { type: 'string', enum: ['eq', 'ne', 'gt', 'lt'] },
+              value: { type: 'string' },
+            },
+            required: ['field', 'operator', 'value'],
+          },
+        },
+      },
+    };
+
+    const params = {
+      tool_name: 'advanced_schema_tool',
+      description: 'Tool with advanced schema features',
+      graphql_query: 'query Search($status: String, $priority: Priority, $filters: [FilterInput!]) { search(status: $status, priority: $priority, filters: $filters) { results } }',
+      parameter_schema: advancedSchema,
+    };
+
+    const result = handler(params);
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('Successfully created tool');
+  });
+
   it('should handle storage errors gracefully', () => {
     vi.mocked(saveToolToFile).mockImplementation(() => {
       throw new Error('Failed to save tool to file');

@@ -4,9 +4,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { createDynamicToolHandler } from './dynamicToolHandler.js';
+import { convertJsonSchemaToMcpZod } from './jsonSchemaValidator.js';
 import { loadAllTools } from './storage.js';
 import * as createSavedQueryTool from './tools/createSavedQueryTool.js';
-import { createZodSchemaFromJsonSchema } from './tools/createSavedQueryTool.js';
 import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
 import type { SavedToolConfig } from './types.js';
 
@@ -20,7 +20,7 @@ function registerAllTools(server: McpServer): Map<string, SavedToolConfig> {
     const dynamicToolConfig = {
       title: toolConfig.description,
       description: toolConfig.description,
-      inputSchema: createZodSchemaFromJsonSchema(toolConfig.parameter_schema),
+      inputSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
     };
     
     server.registerTool(toolName, dynamicToolConfig, dynamicHandler);

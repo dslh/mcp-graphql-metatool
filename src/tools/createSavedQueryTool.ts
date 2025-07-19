@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { createDynamicToolHandler } from '../dynamicToolHandler.js';
+import { validateJsonSchema, convertJsonSchemaToMcpZod } from '../jsonSchemaValidator.js';
 import { withErrorHandling, type Logger } from '../responses.js';
 import { saveToolToFile } from '../storage.js';
 import type { CreateSavedQueryToolParams, SavedToolConfig } from '../types.js';
@@ -42,7 +43,7 @@ function registerToolWithServer(
   const dynamicToolConfig = {
     title: toolConfig.description,
     description: toolConfig.description,
-    inputSchema: createZodSchemaFromJsonSchema(toolConfig.parameter_schema),
+    inputSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
   };
 
   server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
@@ -57,7 +58,7 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
       }
 
       log('parsing params');
-      if (!isValidJsonSchema(params.parameter_schema)) {
+      if (!validateJsonSchema(params.parameter_schema)) {
         throw new Error('Invalid parameter_schema: must be a valid JSON Schema object');
       }
 
@@ -91,55 +92,3 @@ function extractGraphQLVariables(query: string): string[] {
   return [...new Set(variableMatches.map(match => match.slice(1)))];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isValidJsonSchema(schema: any): boolean {
-  if (schema === null || schema === undefined || typeof schema !== 'object') return false;
-
-  if (schema['type'] === 'object') {
-    return Boolean(schema['properties']) && typeof schema['properties'] === 'object';
-  }
-
-  return true;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createZodSchemaFromJsonSchema(jsonSchema: Record<string, any>): Record<string, z.ZodSchema> {
-  const schemaFields: Record<string, z.ZodSchema> = {};
-
-  if (jsonSchema['type'] === 'object' && Boolean(jsonSchema['properties'])) {
-    for (const [key, value] of Object.entries(jsonSchema['properties'])) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const propSchema = value as Record<string, any>;
-      // eslint-disable-next-line security/detect-object-injection
-      schemaFields[key] = createZodFieldFromJsonSchema(propSchema);
-    }
-  }
-
-  return schemaFields;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function createZodFieldFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSchema {
-  switch (jsonSchema['type']) {
-    case 'string': {
-      return z.string();
-    }
-    case 'number': {
-      return z.number();
-    }
-    case 'integer': {
-      return z.number().int();
-    }
-    case 'boolean': {
-      return z.boolean();
-    }
-    case 'array': {
-      const itemSchema =
-        jsonSchema['items'] === undefined ? z.any() : createZodFieldFromJsonSchema(jsonSchema['items']);
-      return z.array(itemSchema);
-    }
-    default: {
-      return z.any();
-    }
-  }
-}
