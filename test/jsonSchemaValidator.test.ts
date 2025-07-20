@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 
-import { validateJsonSchema, convertJsonSchemaToZod } from '../src/jsonSchemaValidator.js';
+import { validateJsonSchema, convertJsonSchemaToZod, convertJsonSchemaToMcpZod } from '../src/jsonSchemaValidator.js';
 
 describe('jsonSchemaValidator', () => {
   describe('validateJsonSchema', () => {
@@ -258,6 +258,180 @@ describe('jsonSchemaValidator', () => {
       // Should accept arrays with any items
       expect(() => zodSchema.parse([])).not.toThrow();
       expect(() => zodSchema.parse(['string', 123, true, { object: 'value' }])).not.toThrow();
+    });
+  });
+
+  describe('convertJsonSchemaToMcpZod required/optional handling', () => {
+    it('should handle required fields correctly', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          requiredField: { type: 'string' },
+          optionalField: { type: 'string' },
+        },
+        required: ['requiredField'],
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // Test required field validation
+      expect(() => zodFields['requiredField']?.parse('valid')).not.toThrow();
+      expect(() => zodFields['requiredField']?.parse(undefined)).toThrow();
+      
+      // Test optional field validation
+      expect(() => zodFields['optionalField']?.parse('valid')).not.toThrow();
+      expect(() => zodFields['optionalField']?.parse(undefined)).not.toThrow();
+    });
+
+    it('should handle optional fields with default values', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          requiredField: { type: 'string' },
+          optionalWithDefault: { type: 'integer', default: 10 },
+          optionalNoDefault: { type: 'string' },
+        },
+        required: ['requiredField'],
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // Required field should not accept undefined
+      expect(() => zodFields['requiredField']?.parse(undefined)).toThrow();
+      
+      // Optional with default should use default when undefined
+      const resultWithDefault = zodFields['optionalWithDefault']?.parse(undefined);
+      expect(resultWithDefault).toBe(10);
+      
+      // Optional without default should accept undefined
+      expect(() => zodFields['optionalNoDefault']?.parse(undefined)).not.toThrow();
+    });
+
+    it('should handle mixed required and optional parameters', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          pipelineId: { type: 'string' },
+          workspaceId: { type: 'string' },
+          limit: { type: 'integer', default: 10 },
+          repositoryIds: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['pipelineId', 'workspaceId'],
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // Required fields should reject undefined
+      expect(() => zodFields['pipelineId']?.parse(undefined)).toThrow();
+      expect(() => zodFields['workspaceId']?.parse(undefined)).toThrow();
+      
+      // Optional with default should use default
+      expect(zodFields['limit']?.parse(undefined)).toBe(10);
+      
+      // Optional without default should accept undefined
+      expect(() => zodFields['repositoryIds']?.parse(undefined)).not.toThrow();
+    });
+
+    it('should handle schema with no required array', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          field1: { type: 'string' },
+          field2: { type: 'integer', default: 5 },
+        },
+        // No required array - all fields should be optional
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // Both fields should accept undefined
+      expect(() => zodFields['field1']?.parse(undefined)).not.toThrow();
+      expect(zodFields['field2']?.parse(undefined)).toBe(5);
+    });
+
+    it('should handle schema with empty required array', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          field1: { type: 'string' },
+          field2: { type: 'integer' },
+        },
+        required: [], // Empty required array
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // All fields should be optional
+      expect(() => zodFields['field1']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['field2']?.parse(undefined)).not.toThrow();
+    });
+
+    it('should handle default values of different types', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          stringDefault: { type: 'string', default: 'hello' },
+          numberDefault: { type: 'number', default: 42.5 },
+          integerDefault: { type: 'integer', default: 100 },
+          booleanDefault: { type: 'boolean', default: true },
+          arrayDefault: { type: 'array', items: { type: 'string' }, default: ['item'] },
+        },
+        required: [],
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      expect(zodFields['stringDefault']?.parse(undefined)).toBe('hello');
+      expect(zodFields['numberDefault']?.parse(undefined)).toBe(42.5);
+      expect(zodFields['integerDefault']?.parse(undefined)).toBe(100);
+      expect(zodFields['booleanDefault']?.parse(undefined)).toBe(true);
+      expect(zodFields['arrayDefault']?.parse(undefined)).toEqual(['item']);
+    });
+
+    it('should handle the get_pipeline_issues bug scenario', () => {
+      // This is the exact schema from the bug report
+      const schema = {
+        type: 'object',
+        required: ['pipelineId', 'workspaceId'],
+        properties: {
+          limit: {
+            type: 'integer',
+            default: 10,
+            description: 'Maximum number of issues to return',
+          },
+          pipelineId: {
+            type: 'string',
+            description: 'The ID of the pipeline to search',
+          },
+          workspaceId: {
+            type: 'string',
+            description: 'The ID of the workspace',
+          },
+          repositoryIds: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional array of repository IDs to filter by',
+          },
+        },
+      };
+
+      const zodFields = convertJsonSchemaToMcpZod(schema);
+      
+      // Required fields should reject undefined
+      expect(() => zodFields['pipelineId']?.parse(undefined)).toThrow();
+      expect(() => zodFields['workspaceId']?.parse(undefined)).toThrow();
+      
+      // limit should have default value
+      expect(zodFields['limit']?.parse(undefined)).toBe(10);
+      
+      // repositoryIds should be optional
+      expect(() => zodFields['repositoryIds']?.parse(undefined)).not.toThrow();
+      
+      // Test valid values work too
+      expect(() => zodFields['pipelineId']?.parse('pipeline123')).not.toThrow();
+      expect(() => zodFields['workspaceId']?.parse('workspace456')).not.toThrow();
+      expect(() => zodFields['limit']?.parse(20)).not.toThrow();
+      expect(() => zodFields['repositoryIds']?.parse(['repo1', 'repo2'])).not.toThrow();
     });
   });
 

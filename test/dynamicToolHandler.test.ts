@@ -601,4 +601,264 @@ describe('dynamicToolHandler', () => {
       expect(result.isError).toBeUndefined();
     });
   });
+
+  describe('MCP tool parameter requirements', () => {
+    it('should handle missing optional parameters successfully', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'optional_params_test',
+        description: 'Test optional parameter handling',
+        graphql_query: 'query Test($required: String!, $optional: String, $withDefault: Int) { test(required: $required, optional: $optional, withDefault: $withDefault) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            required: { type: 'string' },
+            optional: { type: 'string' },
+            withDefault: { type: 'integer', default: 42 },
+          },
+          required: ['required'],
+        },
+        variables: ['required', 'optional', 'withDefault'],
+      };
+
+      const mockResult = { test: 'success' };
+      vi.mocked(client.request).mockResolvedValue(mockResult);
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should succeed with only required parameter
+      const result = await handler({ required: 'test' });
+      expect(result.isError).toBeUndefined();
+      expect(client.request).toHaveBeenCalledWith(
+        toolConfig.graphql_query,
+        { required: 'test', withDefault: 42 } // Default value is applied
+      );
+    });
+
+    it('should fail when required parameters are missing', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'required_missing_test',
+        description: 'Test missing required parameter',
+        graphql_query: 'query Test($required: String!) { test(required: $required) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            required: { type: 'string' },
+            optional: { type: 'string' },
+          },
+          required: ['required'],
+        },
+        variables: ['required', 'optional'],
+      };
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should fail when required parameter is missing
+      const result = await handler({ optional: 'present' });
+      expect(result.isError).toBe(true);
+      expect(result.content[0]?.text).toContain('Parameter validation error');
+      expect(client.request).not.toHaveBeenCalled();
+    });
+
+    it('should apply default values for optional parameters', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'default_values_test',
+        description: 'Test default value handling',
+        graphql_query: 'query Test($id: String!, $limit: Int) { test(id: $id, limit: $limit) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            limit: { type: 'integer', default: 25 },
+          },
+          required: ['id'],
+        },
+        variables: ['id', 'limit'],
+      };
+
+      const mockResult = { test: 'success' };
+      vi.mocked(client.request).mockResolvedValue(mockResult);
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should apply default value when limit is not provided
+      const result = await handler({ id: 'test123' });
+      expect(result.isError).toBeUndefined();
+      
+      // Default value should be applied automatically by Zod
+      expect(client.request).toHaveBeenCalledWith(
+        toolConfig.graphql_query,
+        { id: 'test123', limit: 25 }
+      );
+    });
+
+    it('should handle the exact get_pipeline_issues scenario', async () => {
+      // This matches the exact saved tool configuration from the bug
+      const toolConfig: SavedToolConfig = {
+        name: 'get_pipeline_issues',
+        description: 'Get issues from a specific pipeline with optional filtering by repository',
+        graphql_query: `
+query GetPipelineIssues($pipelineId: ID!, $workspaceId: ID!, $limit: Int!, $repositoryIds: [ID!]) {
+  searchIssuesByPipeline(
+    pipelineId: $pipelineId
+    first: $limit
+    filters: {
+      repositoryIds: $repositoryIds
+    }
+  ) {
+    nodes {
+      id
+      number
+      title
+      state
+      pipelineIssue(workspaceId: $workspaceId) {
+        pipeline {
+          id
+          name
+          stage
+        }
+      }
+      repository {
+        id
+        name
+      }
+      assignees {
+        nodes {
+          login
+        }
+      }
+    }
+    totalCount
+  }
+}
+`,
+        parameter_schema: {
+          type: 'object',
+          required: ['pipelineId', 'workspaceId'],
+          properties: {
+            limit: {
+              type: 'integer',
+              default: 10,
+              description: 'Maximum number of issues to return',
+            },
+            pipelineId: {
+              type: 'string',
+              description: 'The ID of the pipeline to search',
+            },
+            workspaceId: {
+              type: 'string',
+              description: 'The ID of the workspace',
+            },
+            repositoryIds: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Optional array of repository IDs to filter by',
+            },
+          },
+        },
+        variables: ['pipelineId', 'workspaceId', 'limit', 'repositoryIds'],
+      };
+
+      const mockResult = {
+        searchIssuesByPipeline: {
+          nodes: [{ id: 'issue1', title: 'Test Issue' }],
+          totalCount: 1,
+        },
+      };
+      vi.mocked(client.request).mockResolvedValue(mockResult);
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should succeed with only required parameters
+      const result1 = await handler({ 
+        pipelineId: 'pipeline123', 
+        workspaceId: 'workspace456' 
+      });
+      expect(result1.isError).toBeUndefined();
+      
+      // Should succeed with optional parameters
+      const result2 = await handler({
+        pipelineId: 'pipeline123',
+        workspaceId: 'workspace456',
+        limit: 20,
+        repositoryIds: ['repo1', 'repo2'],
+      });
+      expect(result2.isError).toBeUndefined();
+      
+      // Should fail if required parameters are missing
+      const result3 = await handler({ pipelineId: 'pipeline123' });
+      expect(result3.isError).toBe(true);
+      expect(result3.content[0]?.text).toContain('Parameter validation error');
+    });
+
+    it('should handle tools with all optional parameters', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'all_optional_test',
+        description: 'Test tool with all optional parameters',
+        graphql_query: 'query Test($search: String, $limit: Int) { test(search: $search, limit: $limit) }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            search: { type: 'string' },
+            limit: { type: 'integer', default: 50 },
+          },
+          // No required array - all optional
+        },
+        variables: ['search', 'limit'],
+      };
+
+      const mockResult = { test: 'success' };
+      vi.mocked(client.request).mockResolvedValue(mockResult);
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should succeed with no parameters
+      const result = await handler({});
+      expect(result.isError).toBeUndefined();
+      expect(client.request).toHaveBeenCalledWith(
+        toolConfig.graphql_query,
+        { limit: 50 } // Default value is applied
+      );
+    });
+
+    it('should handle multiple default values and types', async () => {
+      const toolConfig: SavedToolConfig = {
+        name: 'multiple_defaults_test',
+        description: 'Test multiple default values',
+        graphql_query: 'query Test($id: String!, $page: Int, $size: Int, $active: Boolean, $tags: [String!]) { test }',
+        parameter_schema: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            page: { type: 'integer', default: 1 },
+            size: { type: 'integer', default: 20 },
+            active: { type: 'boolean', default: true },
+            tags: { type: 'array', items: { type: 'string' }, default: [] },
+          },
+          required: ['id'],
+        },
+        variables: ['id', 'page', 'size', 'active', 'tags'],
+      };
+
+      const mockResult = { test: 'success' };
+      vi.mocked(client.request).mockResolvedValue(mockResult);
+
+      const handler = createDynamicToolHandler(toolConfig);
+      
+      // Should succeed with only required parameter
+      const result = await handler({ id: 'test123' });
+      expect(result.isError).toBeUndefined();
+      
+      // All default values should be applied automatically
+      expect(client.request).toHaveBeenCalledWith(
+        toolConfig.graphql_query,
+        { 
+          id: 'test123',
+          page: 1,
+          size: 20,
+          active: true,
+          tags: []
+        }
+      );
+    });
+  });
 });

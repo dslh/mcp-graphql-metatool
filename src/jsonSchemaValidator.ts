@@ -49,9 +49,14 @@ export function convertJsonSchemaToMcpZod(jsonSchema: Record<string, any>): Reco
   const schemaFields: Record<string, z.ZodSchema> = {};
   
   if (jsonSchema['type'] === 'object' && jsonSchema['properties']) {
+    const requiredFields = new Set(jsonSchema['required'] || []);
+    
     for (const [key, value] of Object.entries(jsonSchema['properties'])) {
       const propSchema = value as Record<string, any>;
-      schemaFields[key] = createZodFieldFromJsonSchema(propSchema);
+      const isRequired = requiredFields.has(key);
+      const defaultValue = propSchema['default'];
+      
+      schemaFields[key] = createZodFieldFromJsonSchema(propSchema, isRequired, defaultValue);
     }
   }
   
@@ -90,9 +95,14 @@ function createZodSchemaFromJsonSchemaManual(jsonSchema: Record<string, any>): z
   const schemaFields: Record<string, z.ZodSchema> = {};
   
   if (jsonSchema['type'] === 'object' && jsonSchema['properties']) {
+    const requiredFields = new Set(jsonSchema['required'] || []);
+    
     for (const [key, value] of Object.entries(jsonSchema['properties'])) {
       const propSchema = value as Record<string, any>;
-      schemaFields[key] = createZodFieldFromJsonSchema(propSchema);
+      const isRequired = requiredFields.has(key);
+      const defaultValue = propSchema['default'];
+      
+      schemaFields[key] = createZodFieldFromJsonSchema(propSchema, isRequired, defaultValue);
     }
   }
   
@@ -102,26 +112,49 @@ function createZodSchemaFromJsonSchemaManual(jsonSchema: Record<string, any>): z
 /**
  * Converts a single JSON Schema field to a Zod schema
  */
-function createZodFieldFromJsonSchema(jsonSchema: Record<string, any>): z.ZodSchema {
+function createZodFieldFromJsonSchema(
+  jsonSchema: Record<string, any>, 
+  isRequired: boolean = true, 
+  defaultValue?: any
+): z.ZodSchema {
+  let schema: z.ZodSchema;
+  
   switch (jsonSchema['type']) {
     case 'string': {
-      return z.string();
+      schema = z.string();
+      break;
     }
     case 'number': {
-      return z.number();
+      schema = z.number();
+      break;
     }
     case 'integer': {
-      return z.number().int();
+      schema = z.number().int();
+      break;
     }
     case 'boolean': {
-      return z.boolean();
+      schema = z.boolean();
+      break;
     }
     case 'array': {
       const itemSchema = jsonSchema['items'] ? createZodFieldFromJsonSchema(jsonSchema['items']) : z.any();
-      return z.array(itemSchema);
+      schema = z.array(itemSchema);
+      break;
     }
     default: {
-      return z.any();
+      schema = z.any();
+      break;
     }
   }
+  
+  // Apply default value if specified
+  if (defaultValue !== undefined) {
+    schema = schema.default(defaultValue);
+  }
+  // If not required and no default, make it optional
+  else if (!isRequired) {
+    schema = schema.optional();
+  }
+  
+  return schema;
 }
