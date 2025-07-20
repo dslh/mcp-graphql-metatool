@@ -60,6 +60,24 @@ describe('storage', () => {
   };
 
   describe('ensureDataDirectory', () => {
+    it('should use custom data directory from environment variable', async () => {
+      vi.stubEnv('MCP_GRAPHQL_DATA_DIR', '/custom/data');
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      // Clear module cache and re-import
+      vi.resetModules();
+      const { ensureDataDirectory: ensureDataDirectoryWithEnv } = await import('../src/storage.js');
+
+      ensureDataDirectoryWithEnv();
+
+      expect(vi.mocked(existsSync)).toHaveBeenCalledWith('/custom/data');
+      expect(vi.mocked(existsSync)).toHaveBeenCalledWith('/custom/data/tools');
+      expect(vi.mocked(existsSync)).toHaveBeenCalledWith('/custom/data/types');
+      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith('/custom/data', { recursive: true });
+      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith('/custom/data/tools', { recursive: true });
+      expect(vi.mocked(mkdirSync)).toHaveBeenCalledWith('/custom/data/types', { recursive: true });
+    });
+
     it('should create all directories when they do not exist', () => {
       vi.mocked(existsSync).mockReturnValue(false);
 

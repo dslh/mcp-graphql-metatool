@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import type { SavedToolConfig } from './types.js';
 
-const DATA_DIR = './data';
+const DATA_DIR = process.env['MCP_GRAPHQL_DATA_DIR'] || './data';
 const TOOLS_DIR = join(DATA_DIR, 'tools');
 const TYPES_DIR = join(DATA_DIR, 'types');
 
