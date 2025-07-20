@@ -48,11 +48,11 @@ type AsyncHandledFn = (log: Logger) => Promise<string>;
 export function withErrorHandling(operation: string, fn: HandledFn): MCPResponse;
 export function withErrorHandling(operation: string, fn: AsyncHandledFn): Promise<MCPResponse>;
 export function withErrorHandling(operation: string, fn: HandledFn | AsyncHandledFn): MCPResponse | Promise<MCPResponse> {
-  console.log(`Started ${operation}`);
+  console.error(`Started ${operation}`);
 
   let stage = '';
   const log = (msg: string) => {
-    console.log(msg);
+    console.error(msg);
     stage = ` while ${msg}`;
   }
 
@@ -64,14 +64,14 @@ export function withErrorHandling(operation: string, fn: HandledFn | AsyncHandle
       return result
         .then(value => createSuccessResponse(value))
         .catch(error => createErrorResponse(`${operation}${stage}`, error))
-        .finally(() => console.log(`Finished ${operation}`));
+        .finally(() => console.error(`Finished ${operation}`));
     }
     
     // Synchronous case
-    console.log(`Finished ${operation}`);
+    console.error(`Finished ${operation}`);
     return createSuccessResponse(result);
   } catch (error) {
-    console.log(`Finished ${operation}`);
+    console.error(`Finished ${operation}`);
     return createErrorResponse(`${operation}${stage}`, error);
   }
 }
