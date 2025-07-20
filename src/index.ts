@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { createDynamicToolHandler } from './dynamicToolHandler.js';
 import { convertJsonSchemaToMcpZod } from './jsonSchemaValidator.js';
-import { loadAllTools } from './storage.js';
+import { ensureDataDirectory, loadAllTools } from './storage.js';
 import * as createSavedQueryTool from './tools/createSavedQueryTool.js';
 import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
 import type { SavedToolConfig } from './types.js';
@@ -31,6 +31,8 @@ function registerAllTools(server: McpServer): Map<string, SavedToolConfig> {
 
 async function main(): Promise<void> {
   try {
+    ensureDataDirectory();
+
     const server = new McpServer({
       name: 'graphql-metatool',
       version: '1.0.0',
