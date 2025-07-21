@@ -48,9 +48,9 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 
 ### 2. Dynamic Tool Creation
 
-#### 2.1 Tool Creation
+#### 2.1 Tool Creation and Updates
 
-- **Tool**: `create_saved_query_tool(tool_name, description, graphql_query, parameter_schema, pagination_config=null, idempotency=null)`
+- **Tool**: `save_query(tool_name, description, graphql_query, parameter_schema, pagination_config=null, idempotency=null)`
 
 **Parameters**:
 
@@ -63,11 +63,12 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 
 **Requirements**:
 
-- Validate tool name uniqueness
+- **Create-or-Update Logic**: Create new tool if it doesn't exist, update existing tool if it does
 - Support parameter validation through JSON Schema
 - Reference custom types created via `create_graphql_type`
 - Generate proper MCP tool definitions
 - **Context Variable Injection**: Any GraphQL variable in the query that matches a context key (e.g., `$workspaceId`) gets automatically populated from context when the tool is executed
+- Emit MCP list changed notifications on both create and update operations
 
 #### 2.2 Advanced Features
 
@@ -94,11 +95,12 @@ This document outlines requirements for a standalone Model Context Protocol (MCP
 
 #### 2.3 Tool Management
 
-- **Tool**: `list_saved_tools()`
-- **Tool**: `update_saved_tool(tool_name, ...parameters_to_update)`
-- **Tool**: `delete_saved_tool(tool_name)`
-- **Tool**: `describe_tool(tool_name)` - Returns full tool definition
-- **Tool**: `test_saved_tool(tool_name, parameters)` - Execute tool for testing purposes
+- **Tool**: `list_saved_queries()`
+- **Tool**: `delete_saved_query(tool_name)`
+- **Tool**: `show_saved_query(tool_name)` - Returns full tool definition
+- **Tool**: `test_saved_query(tool_name, parameters)` - Execute tool for testing purposes
+
+**Note**: Tool updates are handled by the `save_query` tool using create-or-update logic.
 
 #### 2.4 Tool Testing
 
@@ -277,9 +279,8 @@ data/
 
 - **Tool Capability Declaration**: Server must declare `listChanged: true` in capabilities
 - **List Change Notifications**: Emit list changed notifications when:
-  - Tools are created via `create_saved_query_tool`
-  - Tools are updated via `update_saved_tool`
-  - Tools are deleted via `delete_saved_tool`
+  - Tools are created or updated via `save_query`
+  - Tools are deleted via `delete_saved_query`
 - **Requirements**: Ensure MCP clients receive immediate updates about tool availability changes
 
 ## User Workflows
@@ -295,15 +296,15 @@ data/
 
 1. Agent develops and tests query using `execute_graphql_query()`
 2. Agent optionally validates query using `validate_graphql_query()`
-3. Agent creates tool using `create_saved_query_tool()` with appropriate configuration
-4. Agent tests new tool and updates if necessary
+3. Agent creates tool using `save_query()` with appropriate configuration
+4. Agent tests new tool and updates using `save_query()` if necessary
 
 ### 3. Daily Usage Workflow
 
-1. Agent uses saved tools for common operations
-2. Agent creates new tools for novel requirements
-3. Agent manages tool library via list/delete operations
-4. Agent exports useful tools for sharing or backup
+1. Agent uses saved queries for common operations
+2. Agent creates new queries for novel requirements
+3. Agent manages query library via list/delete operations
+4. Agent exports useful queries for sharing or backup
 
 ## MVP vs Future Features
 
@@ -321,7 +322,8 @@ data/
 ### Version 1.0 (Phase 2)
 
 - Context management (`set_graphql_context`, `list_graphql_context`, `clear_graphql_context`)
-- Tool management (`list_saved_tools`, `delete_saved_tool`, `describe_tool`)
+- Tool management (`list_saved_queries`, `delete_saved_query`, `show_saved_query`)
+- Tool updates (rename `create_saved_query_tool` to `save_query` with create-or-update logic)
 
 ### Subsequent development (Phase 3)
 
@@ -333,8 +335,7 @@ data/
 
 - Advanced pagination configuration
 - Idempotency and caching
-- Tool testing capabilities (`test_saved_tool`)
-- Tool update capabilities (`update_saved_tool`)
+- Tool testing capabilities (`test_saved_query`)
 - Enhanced error handling and debugging tools
 - Configurable datastore adapters
 - Query complexity analysis and execution timeouts
