@@ -8,6 +8,10 @@ export interface SaveQueryToolParams {
   idempotency?: IdempotencyConfig | undefined;
 }
 
+export interface DeleteSavedQueryToolParams {
+  tool_name: string;
+}
+
 export interface PaginationConfig {
   enabled: boolean;
   style: 'relay' | 'offset' | 'cursor';

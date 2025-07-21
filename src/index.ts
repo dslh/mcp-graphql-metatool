@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { registerAllTools } from './dynamicToolHandler.js';
 import { ensureDataDirectory } from './storage.js';
+import * as deleteSavedQuery from './tools/deleteSavedQuery.js';
 import * as saveQuery from './tools/saveQuery.js';
 import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
 
@@ -29,8 +30,9 @@ async function main(): Promise<void> {
     // Register all saved tools and get the registeredTools map
     const registeredTools = registerAllTools(server);
 
-    // Register the save query tool (needs registeredTools for create/update operations)
+    // Register tool management tools (need registeredTools for operations)
     server.registerTool(saveQuery.name, saveQuery.config, saveQuery.createHandler(server, registeredTools));
+    server.registerTool(deleteSavedQuery.name, deleteSavedQuery.config, deleteSavedQuery.createHandler(server, registeredTools));
 
     const transport = new StdioServerTransport();
     console.error(`"Starting GraphQL MCP Metatool with ${registeredTools.size} saved tools"`);
