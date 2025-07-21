@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { saveToolToFile } from '../../src/storage.js';
-import { createHandler } from '../../src/tools/createSavedQueryTool.js';
-import type { SavedToolConfig } from '../../src/types.js';
+import { createHandler } from '../../src/tools/saveQuery.js';
 
 // Mock the client before importing the handler
 vi.mock('../../src/client.js', () => ({
@@ -16,17 +15,18 @@ vi.mock('../../src/storage.js', () => ({
   saveToolToFile: vi.fn(),
 }));
 
-describe('createSavedQueryTool', () => {
+describe('saveQuery', () => {
   let mockServer: { registerTool: ReturnType<typeof vi.fn> };
-  let toolsMap: Map<string, SavedToolConfig>;
+  let registeredTools: Map<string, { update: ReturnType<typeof vi.fn> }>;
   let handler: ReturnType<typeof createHandler>;
 
   beforeEach(() => {
+    const mockRegisteredTool = { update: vi.fn() };
     mockServer = {
-      registerTool: vi.fn(),
+      registerTool: vi.fn().mockReturnValue(mockRegisteredTool),
     };
-    toolsMap = new Map();
-    handler = createHandler(mockServer, toolsMap);
+    registeredTools = new Map();
+    handler = createHandler(mockServer, registeredTools);
     vi.clearAllMocks();
   });
 
@@ -70,29 +70,111 @@ describe('createSavedQueryTool', () => {
       }),
       expect.any(Function)
     );
-    expect(toolsMap.has('get_user_by_id')).toBe(true);
+    expect(registeredTools.has('get_user_by_id')).toBe(true);
   });
 
-  it('should reject duplicate tool names', () => {
+  it('should reject duplicate tool names when overwrite is false', () => {
     const params = {
       tool_name: 'existing_tool',
       description: 'Test tool',
       graphql_query: 'query { test }',
       parameter_schema: { type: 'object', properties: {} },
+      overwrite: false,
     };
 
-    toolsMap.set('existing_tool', {
-      name: 'existing_tool',
-      description: 'Test tool',
-      graphql_query: 'query { test }',
-      parameter_schema: { type: 'object', properties: {} },
-      variables: [],
+    registeredTools.set('existing_tool', {
+      update: vi.fn(),
     });
 
     const result = handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('already exists');
+    expect(result.content[0]?.text).toContain('Set overwrite=true');
+  });
+
+  it('should update existing tool when overwrite is true', () => {
+    const mockUpdate = vi.fn();
+    registeredTools.set('existing_tool', {
+      update: mockUpdate,
+    });
+
+    const params = {
+      tool_name: 'existing_tool',
+      description: 'Updated test tool',
+      graphql_query: 'query UpdatedTest($id: ID!) { test(id: $id) { name } }',
+      parameter_schema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+      },
+      overwrite: true,
+    };
+
+    const result = handler(params);
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('Successfully updated tool');
+    expect(result.content[0]?.text).toContain('existing_tool');
+    expect(result.content[0]?.text).toContain('1 variables: id');
+
+    expect(saveToolToFile).toHaveBeenCalledWith(
+      'existing_tool',
+      expect.objectContaining({
+        name: 'existing_tool',
+        description: 'Updated test tool',
+        graphql_query: 'query UpdatedTest($id: ID!) { test(id: $id) { name } }',
+        variables: ['id'],
+      })
+    );
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Updated test tool',
+        description: 'Updated test tool',
+        callback: expect.any(Function),
+      })
+    );
+
+    expect(mockServer.registerTool).not.toHaveBeenCalled();
+  });
+
+  it('should create new tool when overwrite is true but tool does not exist', () => {
+    const params = {
+      tool_name: 'new_tool',
+      description: 'Test tool',
+      graphql_query: 'query { test }',
+      parameter_schema: { type: 'object', properties: {} },
+      overwrite: true,
+    };
+
+    // Tool does not exist, should create it even with overwrite=true
+    const result = handler(params);
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0]?.text).toContain('Successfully created tool');
+    expect(result.content[0]?.text).toContain('new_tool');
+  });
+
+  it('should default overwrite to false when not specified', () => {
+    const params = {
+      tool_name: 'existing_tool',
+      description: 'Test tool',
+      graphql_query: 'query { test }',
+      parameter_schema: { type: 'object', properties: {} },
+      // overwrite not specified, should default to false
+    };
+
+    registeredTools.set('existing_tool', {
+      update: vi.fn(),
+    });
+
+    const result = handler(params);
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toContain('already exists');
+    expect(result.content[0]?.text).toContain('Set overwrite=true');
   });
 
   it('should allow valid tool names', () => {
@@ -292,10 +374,10 @@ describe('createSavedQueryTool', () => {
     const result = handler(params);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('Error creating tool');
+    expect(result.content[0]?.text).toContain('Error saving tool');
     expect(result.content[0]?.text).toContain('Failed to save tool to file');
     expect(mockServer.registerTool).not.toHaveBeenCalled();
-    expect(toolsMap.has('storage_error_tool')).toBe(false);
+    expect(registeredTools.has('storage_error_tool')).toBe(false);
   });
 
   it('should handle server registration errors after successful storage', () => {
@@ -313,14 +395,14 @@ describe('createSavedQueryTool', () => {
     const result = handler(params);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('Error creating tool');
+    expect(result.content[0]?.text).toContain('Error saving tool');
     expect(saveToolToFile).toHaveBeenCalledWith(
       'server_error_tool',
       expect.objectContaining({
         name: 'server_error_tool',
       })
     );
-    expect(toolsMap.has('server_error_tool')).toBe(false);
+    expect(registeredTools.has('server_error_tool')).toBe(false);
   });
 
   it('should ensure storage happens before server registration (atomicity)', () => {

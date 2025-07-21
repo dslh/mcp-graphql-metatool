@@ -5,7 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { registerAllTools } from './dynamicToolHandler.js';
 import { ensureDataDirectory } from './storage.js';
-import * as createSavedQueryTool from './tools/createSavedQueryTool.js';
+import * as saveQuery from './tools/saveQuery.js';
 import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
 
 async function main(): Promise<void> {
@@ -26,14 +26,14 @@ async function main(): Promise<void> {
     // Register core tools
     server.registerTool(executeGraphqlQuery.name, executeGraphqlQuery.config, executeGraphqlQuery.handler);
 
-    // Register all saved tools and get the existingTools map
-    const existingTools = registerAllTools(server);
+    // Register all saved tools and get the registeredTools map
+    const registeredTools = registerAllTools(server);
 
-    // Register the create saved query tool (needs existingTools for validation)
-    server.registerTool(createSavedQueryTool.name, createSavedQueryTool.config, createSavedQueryTool.createHandler(server, existingTools));
+    // Register the save query tool (needs registeredTools for create/update operations)
+    server.registerTool(saveQuery.name, saveQuery.config, saveQuery.createHandler(server, registeredTools));
 
     const transport = new StdioServerTransport();
-    console.error(`"Starting GraphQL MCP Metatool with ${existingTools.size} saved tools"`);
+    console.error(`"Starting GraphQL MCP Metatool with ${registeredTools.size} saved tools"`);
     await server.connect(transport);
   } catch (error) {
     console.error('Failed to start GraphQL MCP server:', error);

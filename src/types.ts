@@ -1,8 +1,9 @@
-export interface CreateSavedQueryToolParams {
+export interface SaveQueryToolParams {
   tool_name: string;
   description: string;
   graphql_query: string;
   parameter_schema: Record<string, any>;
+  overwrite?: boolean;
   pagination_config?: PaginationConfig | undefined;
   idempotency?: IdempotencyConfig | undefined;
 }

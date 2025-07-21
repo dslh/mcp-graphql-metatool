@@ -1,4 +1,4 @@
-import { type McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { type McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { client } from './client.js';
@@ -7,11 +7,12 @@ import { withErrorHandling, type Logger } from './responses.js';
 import { loadAllTools } from './storage.js';
 import type { SavedToolConfig } from './types.js';
 
-export function registerAllTools(server: McpServer): Map<string, SavedToolConfig> {
-  const existingTools = loadAllTools();
+export function registerAllTools(server: McpServer): Map<string, RegisteredTool> {
+  const savedTools = loadAllTools();
+  const registeredTools = new Map<string, RegisteredTool>();
 
   // Register all loaded saved tools
-  for (const [toolName, toolConfig] of existingTools) {
+  for (const [toolName, toolConfig] of savedTools) {
     const dynamicHandler = createDynamicToolHandler(toolConfig);
 
     const dynamicToolConfig = {
@@ -20,10 +21,11 @@ export function registerAllTools(server: McpServer): Map<string, SavedToolConfig
       inputSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
     };
 
-    server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
+    const registeredTool = server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
+    registeredTools.set(toolName, registeredTool);
   }
 
-  return existingTools;
+  return registeredTools;
 }
 
 export function createDynamicToolHandler(toolConfig: SavedToolConfig) {

@@ -1,17 +1,17 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { createDynamicToolHandler } from '../dynamicToolHandler.js';
 import { validateJsonSchema, convertJsonSchemaToMcpZod } from '../jsonSchemaValidator.js';
 import { withErrorHandling, type Logger } from '../responses.js';
 import { saveToolToFile } from '../storage.js';
-import type { CreateSavedQueryToolParams, SavedToolConfig } from '../types.js';
+import type { SaveQueryToolParams, SavedToolConfig } from '../types.js';
 
-export const name = 'create_saved_query_tool';
+export const name = 'save_query';
 
 export const config = {
-  title: 'Create Saved Query Tool',
-  description: 'Create an MCP tool from a GraphQL query',
+  title: 'Save Query Tool',
+  description: 'Create or update an MCP tool from a GraphQL query',
   inputSchema: {
     tool_name: z
       .string()
@@ -26,6 +26,7 @@ export const config = {
       .min(1, 'GraphQL query is required')
       .describe('The GraphQL query that this tool will execute'),
     parameter_schema: z.record(z.any()).describe('JSON Schema defining tool parameters'),
+    overwrite: z.boolean().default(false).describe('Whether to overwrite an existing tool with the same name'),
     // To be implemented:
     // pagination_config: z.object({
     //   enabled: z.boolean(),
@@ -45,8 +46,8 @@ function registerToolWithServer(
   server: McpServer,
   toolName: string,
   toolConfig: SavedToolConfig,
-  existingTools: Map<string, SavedToolConfig>
-): void {
+  registeredTools: Map<string, RegisteredTool>
+): RegisteredTool {
   const dynamicHandler = createDynamicToolHandler(toolConfig);
 
   const dynamicToolConfig = {
@@ -55,15 +56,41 @@ function registerToolWithServer(
     inputSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
   };
 
-  server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
-  existingTools.set(toolName, toolConfig);
+  const registeredTool = server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
+  registeredTools.set(toolName, registeredTool);
+  return registeredTool;
 }
 
-export function createHandler(server: McpServer, existingTools: Map<string, SavedToolConfig>) {
-  return (params: CreateSavedQueryToolParams): { content: { type: 'text'; text: string }[]; isError?: boolean } => {
-    return withErrorHandling(`creating tool '${params.tool_name}'`, (log: Logger) => {
-      if (existingTools.has(params.tool_name)) {
-        throw new Error(`Tool with name '${params.tool_name}' already exists`);
+function updateExistingTool(
+  toolName: string,
+  toolConfig: SavedToolConfig,
+  registeredTools: Map<string, RegisteredTool>
+): void {
+  const existingTool = registeredTools.get(toolName);
+  if (!existingTool) {
+    throw new Error(`Registered tool '${toolName}' not found for update`);
+  }
+
+  const dynamicHandler = createDynamicToolHandler(toolConfig);
+
+  existingTool.update({
+    title: toolConfig.description,
+    description: toolConfig.description,
+    paramsSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
+    callback: dynamicHandler,
+  });
+}
+
+export function createHandler(server: McpServer, registeredTools: Map<string, RegisteredTool>) {
+  return (params: SaveQueryToolParams): { content: { type: 'text'; text: string }[]; isError?: boolean } => {
+    return withErrorHandling(`saving tool '${params.tool_name}'`, (log: Logger) => {
+      // Check if tool already exists
+      const toolExists = registeredTools.has(params.tool_name);
+      const isUpdate = toolExists && (params.overwrite ?? false);
+      const isCreate = !toolExists;
+
+      if (toolExists && !(params.overwrite ?? false)) {
+        throw new Error(`Tool with name '${params.tool_name}' already exists. Set overwrite=true to update it.`);
       }
 
       log('parsing params');
@@ -87,11 +114,19 @@ export function createHandler(server: McpServer, existingTools: Map<string, Save
       log('persisting file');
       saveToolToFile(params.tool_name, toolConfig);
 
-      // Then register with server
-      log('registering tool in MCP server');
-      registerToolWithServer(server, params.tool_name, toolConfig, existingTools);
+      // Then register or update with server
+      if (isCreate) {
+        log('registering new tool in MCP server');
+        registerToolWithServer(server, params.tool_name, toolConfig, registeredTools);
+        return `Successfully created tool '${params.tool_name}' with ${variables.length} variables: ${variables.join(', ')}`;
+      } else if (isUpdate) {
+        log('updating existing tool in MCP server');
+        updateExistingTool(params.tool_name, toolConfig, registeredTools);
+        return `Successfully updated tool '${params.tool_name}' with ${variables.length} variables: ${variables.join(', ')}`;
+      }
 
-      return `Successfully created tool '${params.tool_name}' with ${variables.length} variables: ${variables.join(', ')}`;
+      // This should never happen due to the logic above, but keeping for safety
+      throw new Error('Unexpected state in save_query handler');
     });
   };
 }
