@@ -3,31 +3,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { createDynamicToolHandler } from './dynamicToolHandler.js';
-import { convertJsonSchemaToMcpZod } from './jsonSchemaValidator.js';
-import { ensureDataDirectory, loadAllTools } from './storage.js';
+import { registerAllTools } from './dynamicToolHandler.js';
+import { ensureDataDirectory } from './storage.js';
 import * as createSavedQueryTool from './tools/createSavedQueryTool.js';
 import * as executeGraphqlQuery from './tools/executeGraphqlQuery.js';
-import type { SavedToolConfig } from './types.js';
-
-function registerAllTools(server: McpServer): Map<string, SavedToolConfig> {
-  const existingTools = loadAllTools();
-
-  // Register all loaded saved tools
-  for (const [toolName, toolConfig] of existingTools) {
-    const dynamicHandler = createDynamicToolHandler(toolConfig);
-    
-    const dynamicToolConfig = {
-      title: toolConfig.description,
-      description: toolConfig.description,
-      inputSchema: convertJsonSchemaToMcpZod(toolConfig.parameter_schema),
-    };
-    
-    server.registerTool(toolName, dynamicToolConfig, dynamicHandler);
-  }
-
-  return existingTools;
-}
 
 async function main(): Promise<void> {
   try {

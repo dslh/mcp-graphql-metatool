@@ -13,9 +13,18 @@ export const config = {
   title: 'Create Saved Query Tool',
   description: 'Create an MCP tool from a GraphQL query',
   inputSchema: {
-    tool_name: z.string().regex(/^[a-z][a-z0-9_]*$/, 'Tool name must be snake_case starting with a letter').describe('The unique name for this tool in snake_case format'),
-    description: z.string().min(1, 'Description is required').describe('A human-readable description of what this tool does'),
-    graphql_query: z.string().min(1, 'GraphQL query is required').describe('The GraphQL query that this tool will execute'),
+    tool_name: z
+      .string()
+      .regex(/^[a-z][a-z0-9_]*$/, 'Tool name must be snake_case starting with a letter')
+      .describe('The unique name for this tool in snake_case format'),
+    description: z
+      .string()
+      .min(1, 'Description is required')
+      .describe('A human-readable description of what this tool does'),
+    graphql_query: z
+      .string()
+      .min(1, 'GraphQL query is required')
+      .describe('The GraphQL query that this tool will execute'),
     parameter_schema: z.record(z.any()).describe('JSON Schema defining tool parameters'),
     // To be implemented:
     // pagination_config: z.object({
@@ -91,4 +100,3 @@ function extractGraphQLVariables(query: string): string[] {
   const variableMatches = query.match(/\$(\w+)/g) ?? [];
   return [...new Set(variableMatches.map(match => match.slice(1)))];
 }
-

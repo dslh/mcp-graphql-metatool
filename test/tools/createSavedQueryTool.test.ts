@@ -266,7 +266,8 @@ describe('createSavedQueryTool', () => {
     const params = {
       tool_name: 'advanced_schema_tool',
       description: 'Tool with advanced schema features',
-      graphql_query: 'query Search($status: String, $priority: Priority, $filters: [FilterInput!]) { search(status: $status, priority: $priority, filters: $filters) { results } }',
+      graphql_query:
+        'query Search($status: String, $priority: Priority, $filters: [FilterInput!]) { search(status: $status, priority: $priority, filters: $filters) { results } }',
       parameter_schema: advancedSchema,
     };
 
