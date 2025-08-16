@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { deleteToolFile } from '../../src/storage.js';
-import { createHandler } from '../../src/tools/deleteSavedQuery.js';
 
-// Mock the client before importing the handler
+// Mock the client
 vi.mock('../../src/client.js', () => ({
   client: {
     request: vi.fn(),
@@ -13,20 +12,28 @@ vi.mock('../../src/client.js', () => ({
 // Mock the storage module
 vi.mock('../../src/storage.js', () => ({
   deleteToolFile: vi.fn(),
+  ensureDataDirectory: vi.fn(),
 }));
 
-describe('deleteSavedQuery', () => {
-  let mockServer: { registerTool: ReturnType<typeof vi.fn> };
-  let registeredTools: Map<string, { remove: ReturnType<typeof vi.fn> }>;
-  let handler: ReturnType<typeof createHandler>;
+// Mock the dynamic tool handler
+vi.mock('../../src/dynamicToolHandler.js', () => ({
+  createDynamicToolHandler: vi.fn(() => vi.fn()),
+  registerAllTools: vi.fn(() => new Map()),
+}));
 
+// Mock the server module
+const mockRegisteredTools = new Map();
+
+vi.mock('../../src/server.js', () => ({
+  registeredTools: mockRegisteredTools,
+}));
+
+// Import after mocks
+const { handler } = await import('../../src/tools/deleteSavedQuery.js');
+
+describe('deleteSavedQuery', () => {
   beforeEach(() => {
-    const mockRegisteredTool = { remove: vi.fn() };
-    mockServer = {
-      registerTool: vi.fn().mockReturnValue(mockRegisteredTool),
-    };
-    registeredTools = new Map();
-    handler = createHandler(mockServer, registeredTools);
+    mockRegisteredTools.clear();
     vi.clearAllMocks();
     // Ensure deleteToolFile mock doesn't throw by default
     vi.mocked(deleteToolFile).mockImplementation(() => {});
@@ -34,7 +41,7 @@ describe('deleteSavedQuery', () => {
 
   it('should successfully delete an existing saved query', () => {
     const mockRemove = vi.fn();
-    registeredTools.set('test_query', {
+    mockRegisteredTools.set('test_query', {
       remove: mockRemove,
     });
 
@@ -51,7 +58,7 @@ describe('deleteSavedQuery', () => {
     expect(mockRemove).toHaveBeenCalledOnce();
 
     // Verify tool was removed from map
-    expect(registeredTools.has('test_query')).toBe(false);
+    expect(mockRegisteredTools.has('test_query')).toBe(false);
 
     // Verify file deletion was called
     expect(deleteToolFile).toHaveBeenCalledWith('test_query');
@@ -104,7 +111,7 @@ describe('deleteSavedQuery', () => {
       tool_name: 'nonexistent_query',
     };
 
-    // Tool doesn't exist in registeredTools map
+    // Tool doesn't exist in mockRegisteredTools map
     const result = handler(params);
 
     expect(result.isError).toBe(true);
@@ -120,7 +127,7 @@ describe('deleteSavedQuery', () => {
       callOrder.push('remove');
     });
 
-    registeredTools.set('test_query', {
+    mockRegisteredTools.set('test_query', {
       remove: mockRemove,
     });
 
@@ -143,7 +150,7 @@ describe('deleteSavedQuery', () => {
       throw new Error('MCP removal failed');
     });
 
-    registeredTools.set('failing_query', {
+    mockRegisteredTools.set('failing_query', {
       remove: mockRemove,
     });
 
@@ -161,12 +168,12 @@ describe('deleteSavedQuery', () => {
     expect(deleteToolFile).not.toHaveBeenCalled();
 
     // Tool should still be in the map since removal failed
-    expect(registeredTools.has('failing_query')).toBe(true);
+    expect(mockRegisteredTools.has('failing_query')).toBe(true);
   });
 
   it('should handle file deletion errors after successful MCP removal', () => {
     const mockRemove = vi.fn();
-    registeredTools.set('file_error_query', {
+    mockRegisteredTools.set('file_error_query', {
       remove: mockRemove,
     });
 
@@ -188,7 +195,7 @@ describe('deleteSavedQuery', () => {
     expect(mockRemove).toHaveBeenCalledOnce();
 
     // Tool should be removed from map even though file deletion failed
-    expect(registeredTools.has('file_error_query')).toBe(false);
+    expect(mockRegisteredTools.has('file_error_query')).toBe(false);
   });
 
   it('should validate tool name format', () => {
@@ -218,7 +225,7 @@ describe('deleteSavedQuery', () => {
     const mockRemove = vi.fn();
     const complexToolName = 'get_workspace_issues_with_filters';
 
-    registeredTools.set(complexToolName, {
+    mockRegisteredTools.set(complexToolName, {
       remove: mockRemove,
     });
 
@@ -234,14 +241,14 @@ describe('deleteSavedQuery', () => {
     expect(result.content[0]?.text).toBe(`Successfully deleted saved query '${complexToolName}'`);
     expect(mockRemove).toHaveBeenCalledOnce();
     expect(deleteToolFile).toHaveBeenCalledWith(complexToolName);
-    expect(registeredTools.has(complexToolName)).toBe(false);
+    expect(mockRegisteredTools.has(complexToolName)).toBe(false);
   });
 
   it('should ensure proper cleanup sequence', () => {
     const mockRemove = vi.fn();
     const toolName = 'cleanup_test_query';
 
-    registeredTools.set(toolName, {
+    mockRegisteredTools.set(toolName, {
       remove: mockRemove,
     });
 
@@ -257,7 +264,7 @@ describe('deleteSavedQuery', () => {
 
     // Verify all cleanup steps were performed in correct order
     expect(mockRemove).toHaveBeenCalledOnce(); // 1. MCP removal
-    expect(registeredTools.has(toolName)).toBe(false); // 2. Map cleanup
+    expect(mockRegisteredTools.has(toolName)).toBe(false); // 2. Map cleanup
     expect(deleteToolFile).toHaveBeenCalledWith(toolName); // 3. File deletion
   });
 });
