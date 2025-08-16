@@ -12,6 +12,10 @@ export interface DeleteSavedQueryToolParams {
   tool_name: string;
 }
 
+export interface ListSavedQueriesToolParams {
+  // No parameters required
+}
+
 export interface PaginationConfig {
   enabled: boolean;
   style: 'relay' | 'offset' | 'cursor';

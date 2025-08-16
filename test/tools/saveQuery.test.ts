@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { saveToolToFile } from '../../src/storage.js';
+import { handler } from '../../src/tools/saveQuery.js';
+
 // Create mock objects at module level
 const mockRegisteredTool = { update: vi.fn() };
 const mockServer = { registerTool: vi.fn(() => mockRegisteredTool) };
@@ -26,10 +29,6 @@ vi.mock('../../src/server.js', () => ({
   get server() { return mockServer; },
   get registeredTools() { return mockRegisteredTools; },
 }));
-
-// Import after mocks
-import { saveToolToFile } from '../../src/storage.js';
-import { handler } from '../../src/tools/saveQuery.js';
 
 describe('saveQuery', () => {
   beforeEach(() => {
