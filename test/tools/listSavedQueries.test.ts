@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+import type { SavedToolConfig } from '../../src/types.js';
+
 // Mock the client
 vi.mock('../../src/client.js', () => ({
   client: {
@@ -10,7 +12,7 @@ vi.mock('../../src/client.js', () => ({
 // Mock the storage module
 const mockSavedTools = new Map();
 vi.mock('../../src/storage.js', () => ({
-  loadAllTools: () => mockSavedTools,
+  loadAllTools: (): Map<string, SavedToolConfig> => mockSavedTools,
   ensureDataDirectory: vi.fn(),
 }));
 

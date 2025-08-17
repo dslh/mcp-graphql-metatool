@@ -1,3 +1,4 @@
+import { type McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { saveToolToFile } from '../../src/storage.js';
@@ -26,8 +27,12 @@ vi.mock('../../src/dynamicToolHandler.js', () => ({
 }));
 
 vi.mock('../../src/server.js', () => ({
-  get server() { return mockServer; },
-  get registeredTools() { return mockRegisteredTools; },
+  get server(): McpServer { return mockServer; },
+  get registeredTools(): Map<string, RegisteredTool> { return mockRegisteredTools; },
+}));
+
+vi.mock('../../src/schemaService.js', () => ({
+  validateGraphQLQuery: vi.fn(() => Promise.resolve({ content: [{ type: 'text', text: 'Valid query' }] })),
 }));
 
 describe('saveQuery', () => {
@@ -36,7 +41,7 @@ describe('saveQuery', () => {
     mockRegisteredTools.clear();
   });
 
-  it('should create a new tool successfully', () => {
+  it('should create a new tool successfully', async () => {
     const params = {
       tool_name: 'get_user_by_id',
       description: 'Get user by ID',
@@ -49,7 +54,7 @@ describe('saveQuery', () => {
       },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully created tool');
@@ -79,7 +84,7 @@ describe('saveQuery', () => {
     expect(mockRegisteredTools.has('get_user_by_id')).toBe(true);
   });
 
-  it('should reject duplicate tool names when overwrite is false', () => {
+  it('should reject duplicate tool names when overwrite is false', async () => {
     const params = {
       tool_name: 'existing_tool',
       description: 'An existing tool',
@@ -91,14 +96,14 @@ describe('saveQuery', () => {
       update: vi.fn(),
     });
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('already exists');
     expect(result.content[0]?.text).toContain('Set overwrite=true');
   });
 
-  it('should update existing tool when overwrite is true', () => {
+  it('should update existing tool when overwrite is true', async () => {
     const mockUpdate = vi.fn();
     mockRegisteredTools.set('existing_tool', {
       update: mockUpdate,
@@ -112,7 +117,7 @@ describe('saveQuery', () => {
       overwrite: true,
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully updated tool');
@@ -125,7 +130,7 @@ describe('saveQuery', () => {
     });
   });
 
-  it('should create new tool when overwrite is true but tool does not exist', () => {
+  it('should create new tool when overwrite is true but tool does not exist', async () => {
     const params = {
       tool_name: 'new_tool',
       description: 'A new tool',
@@ -134,14 +139,14 @@ describe('saveQuery', () => {
       overwrite: true,
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully created tool');
     expect(result.content[0]?.text).toContain('new_tool');
   });
 
-  it('should default overwrite to false when not specified', () => {
+  it('should default overwrite to false when not specified', async () => {
     const params = {
       tool_name: 'existing_tool',
       description: 'An existing tool',
@@ -154,14 +159,14 @@ describe('saveQuery', () => {
       update: vi.fn(),
     });
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('already exists');
     expect(result.content[0]?.text).toContain('Set overwrite=true');
   });
 
-  it('should allow valid tool names', () => {
+  it('should allow valid tool names', async () => {
     const params = {
       tool_name: 'get_user_by_id_123',
       description: 'Valid tool name',
@@ -169,7 +174,7 @@ describe('saveQuery', () => {
       parameter_schema: { type: 'object' },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully created tool');
     expect(saveToolToFile).toHaveBeenCalledWith(
@@ -180,7 +185,7 @@ describe('saveQuery', () => {
     );
   });
 
-  it('should extract GraphQL variables correctly', () => {
+  it('should extract GraphQL variables correctly', async () => {
     const params = {
       tool_name: 'complex_query',
       description: 'Complex query with variables',
@@ -197,28 +202,28 @@ describe('saveQuery', () => {
       parameter_schema: { type: 'object' },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('3 variables');
     expect(result.content[0]?.text).toContain('userId, limit, filter');
   });
 
-  it('should handle invalid JSON schema', () => {
+  it('should handle invalid JSON schema', async () => {
     const params = {
       tool_name: 'invalid_schema',
       description: 'Tool with invalid schema',
       graphql_query: 'query Test { test }',
-      parameter_schema: 'not an object' as any,
+      parameter_schema: 'not an object' as unknown as Record<string, unknown>,
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('Invalid parameter_schema');
   });
 
-  it('should reject malformed JSON schemas', () => {
+  it('should reject malformed JSON schemas', async () => {
     const params = {
       tool_name: 'test_invalid',
       description: 'Test invalid schema',
@@ -228,16 +233,16 @@ describe('saveQuery', () => {
         properties: {
           field: { type: 'also_invalid' },
         },
-      } as any,
+      } as unknown as Record<string, unknown>,
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('Invalid parameter_schema');
   });
 
-  it('should accept complex valid JSON schemas', () => {
+  it('should accept complex valid JSON schemas', async () => {
     const params = {
       tool_name: 'complex_schema',
       description: 'Tool with complex schema',
@@ -266,13 +271,13 @@ describe('saveQuery', () => {
       },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully created tool');
   });
 
-  it('should handle schemas with advanced JSON Schema features', () => {
+  it('should handle schemas with advanced JSON Schema features', async () => {
     const params = {
       tool_name: 'advanced_schema',
       description: 'Tool with advanced schema features',
@@ -306,13 +311,13 @@ describe('saveQuery', () => {
       },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain('Successfully created tool');
   });
 
-  it('should handle storage errors gracefully', () => {
+  it('should handle storage errors gracefully', async () => {
     vi.mocked(saveToolToFile).mockImplementation(() => {
       throw new Error('Failed to save tool to file: disk full');
     });
@@ -324,7 +329,7 @@ describe('saveQuery', () => {
       parameter_schema: { type: 'object' },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('Error saving tool');
@@ -333,7 +338,7 @@ describe('saveQuery', () => {
     expect(mockRegisteredTools.has('storage_error_tool')).toBe(false);
   });
 
-  it('should handle server registration errors after successful storage', () => {
+  it('should handle server registration errors after successful storage', async () => {
     mockServer.registerTool.mockImplementation(() => {
       throw new Error('Server registration failed');
     });
@@ -345,7 +350,7 @@ describe('saveQuery', () => {
       parameter_schema: { type: 'object' },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain('Error saving tool');
@@ -358,7 +363,7 @@ describe('saveQuery', () => {
     expect(mockRegisteredTools.has('server_error_tool')).toBe(false);
   });
 
-  it('should ensure storage happens before server registration (atomicity)', () => {
+  it('should ensure storage happens before server registration (atomicity)', async () => {
     const callOrder: string[] = [];
 
     vi.mocked(saveToolToFile).mockImplementation(() => {
@@ -377,7 +382,7 @@ describe('saveQuery', () => {
       parameter_schema: { type: 'object' },
     };
 
-    const result = handler(params);
+    const result = await handler(params);
 
     expect(result.isError).toBeUndefined();
     expect(callOrder).toEqual(['saveToolToFile', 'registerTool']);

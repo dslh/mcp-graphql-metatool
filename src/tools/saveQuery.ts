@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createDynamicToolHandler } from '../dynamicToolHandler.js';
 import { validateJsonSchema, convertJsonSchemaToMcpZod } from '../jsonSchemaValidator.js';
 import { withErrorHandling, type Logger } from '../responses.js';
+import { validateGraphQLQuery } from '../schemaService.js';
 import { server, registeredTools } from '../server.js';
 import { saveToolToFile } from '../storage.js';
 import type { SaveQueryToolParams, SavedToolConfig } from '../types.js';
@@ -79,8 +80,8 @@ function updateExistingTool(
   });
 }
 
-export function handler(params: SaveQueryToolParams): { content: { type: 'text'; text: string }[]; isError?: boolean } {
-  return withErrorHandling(`saving tool '${params.tool_name}'`, (log: Logger) => {
+export function handler(params: SaveQueryToolParams): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> {
+  return withErrorHandling(`saving tool '${params.tool_name}'`, async (log: Logger) => {
     // Check if tool already exists
     const toolExists = registeredTools.has(params.tool_name);
     const isUpdate = toolExists && (params.overwrite ?? false);
@@ -93,6 +94,13 @@ export function handler(params: SaveQueryToolParams): { content: { type: 'text';
     log('parsing params');
     if (!validateJsonSchema(params.parameter_schema)) {
       throw new Error('Invalid parameter_schema: must be a valid JSON Schema object');
+    }
+
+    log('validating GraphQL query');
+    const validationResult = await validateGraphQLQuery(params.graphql_query);
+    if (validationResult.isError === true) {
+      const errorText = validationResult.content[0]?.text;
+      throw new Error(errorText ?? 'GraphQL validation failed');
     }
 
     const variables = extractGraphQLVariables(params.graphql_query);
