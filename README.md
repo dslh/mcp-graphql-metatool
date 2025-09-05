@@ -18,7 +18,7 @@ MCP servers that wrap existing APIs can be awkward for agents to use. Either the
 
 - **Direct GraphQL Execution** - Execute arbitrary GraphQL queries against any endpoint
 - **Dynamic Tool Creation** - Create custom tools from GraphQL queries that persist across sessions
-- **Bearer Token Authentication** - Secure API access with configurable authentication
+- **Bearer Token & Cookie Authentication** - Secure API access with configurable authentication methods
 - **Parameter Validation** - JSON Schema-based parameter validation for custom tools
 - **Cross-Session Persistence** - Tools and configurations persist between sessions via JSON files
 - **MCP Protocol Compliance** - Full support for MCP capabilities including list change notifications
@@ -47,6 +47,9 @@ export GRAPHQL_ENDPOINT="https://api.example.com/graphql"
 
 # Optional: Bearer token for authentication
 export GRAPHQL_AUTH_TOKEN="your-bearer-token-here"
+
+# Optional: Cookie header for authentication (alternative or in addition to bearer token)
+export GRAPHQL_COOKIE_HEADER="sessionId=abc123; token=xyz789"
 ```
 
 ## Quick Start
@@ -239,10 +242,11 @@ yarn test:ui
 
 ## Environment Variables
 
-| Variable             | Required    | Description                     |
-|----------------------|-------------|---------------------------------|
-| `GRAPHQL_ENDPOINT`   | Yes         | GraphQL API endpoint URL        |
-| `GRAPHQL_AUTH_TOKEN` | No          | Bearer token for authentication |
+| Variable                | Required    | Description                     |
+|-------------------------|-------------|---------------------------------|
+| `GRAPHQL_ENDPOINT`      | Yes         | GraphQL API endpoint URL        |
+| `GRAPHQL_AUTH_TOKEN`    | No          | Bearer token for authentication |
+| `GRAPHQL_COOKIE_HEADER` | No          | Cookie header for authentication |
 
 ## Implementation Status
 
