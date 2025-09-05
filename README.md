@@ -18,7 +18,7 @@ MCP servers that wrap existing APIs can be awkward for agents to use. Either the
 
 - **Direct GraphQL Execution** - Execute arbitrary GraphQL queries against any endpoint
 - **Dynamic Tool Creation** - Create custom tools from GraphQL queries that persist across sessions
-- **Bearer Token & Cookie Authentication** - Secure API access with configurable authentication methods
+- **Configurable Headers** - Flexible header configuration via environment variables for any authentication method
 - **Parameter Validation** - JSON Schema-based parameter validation for custom tools
 - **Cross-Session Persistence** - Tools and configurations persist between sessions via JSON files
 - **MCP Protocol Compliance** - Full support for MCP capabilities including list change notifications
@@ -39,18 +39,57 @@ yarn build
 
 ## Configuration
 
-Set up your environment variables:
+### Environment Variables
+
+Set up your GraphQL endpoint and headers using environment variables:
 
 ```bash
 # Required: GraphQL API endpoint
 export GRAPHQL_ENDPOINT="https://api.example.com/graphql"
+```
 
-# Optional: Bearer token for authentication
+### Header Configuration
+
+Configure HTTP headers using the `GRAPHQL_HEADER_*` pattern. Environment variable names are converted to HTTP header names by:
+- Removing the `GRAPHQL_HEADER_` prefix
+- Converting to lowercase
+- Replacing underscores with hyphens
+
+#### Examples
+
+**Basic Bearer Token Authentication:**
+```bash
+export GRAPHQL_HEADER_AUTHORIZATION="Bearer your-token-here"
+```
+
+**Cookie-based Authentication:**
+```bash
+export GRAPHQL_HEADER_COOKIE="sessionId=abc123; token=xyz789"
+```
+
+**API Key in Custom Header:**
+```bash
+export GRAPHQL_HEADER_X_API_KEY="your-api-key"
+export GRAPHQL_HEADER_X_CLIENT_ID="your-client-id"
+```
+
+**Custom User Agent and Content Type:**
+```bash
+export GRAPHQL_HEADER_USER_AGENT="MyApp/1.0"
+export GRAPHQL_HEADER_CONTENT_TYPE="application/json"
+```
+
+### Legacy Environment Variables (Still Supported)
+
+```bash
+# Legacy: Bearer token for authentication
 export GRAPHQL_AUTH_TOKEN="your-bearer-token-here"
 
-# Optional: Cookie header for authentication (alternative or in addition to bearer token)
+# Legacy: Cookie header for authentication
 export GRAPHQL_COOKIE_HEADER="sessionId=abc123; token=xyz789"
 ```
+
+**Note:** `GRAPHQL_HEADER_*` variables take precedence over legacy variables.
 
 ## Quick Start
 
@@ -242,11 +281,12 @@ yarn test:ui
 
 ## Environment Variables
 
-| Variable                | Required    | Description                     |
-|-------------------------|-------------|---------------------------------|
-| `GRAPHQL_ENDPOINT`      | Yes         | GraphQL API endpoint URL        |
-| `GRAPHQL_AUTH_TOKEN`    | No          | Bearer token for authentication |
-| `GRAPHQL_COOKIE_HEADER` | No          | Cookie header for authentication |
+| Variable                | Required    | Description                           |
+|-------------------------|-------------|---------------------------------------|
+| `GRAPHQL_ENDPOINT`      | Yes         | GraphQL API endpoint URL              |
+| `GRAPHQL_HEADER_*`      | No          | HTTP headers (see Header Configuration) |
+| `GRAPHQL_AUTH_TOKEN`    | No          | Legacy: Bearer token for authentication |
+| `GRAPHQL_COOKIE_HEADER` | No          | Legacy: Cookie header for authentication |
 
 ## Implementation Status
 
