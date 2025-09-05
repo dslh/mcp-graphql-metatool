@@ -239,10 +239,10 @@ yarn test:ui
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GRAPHQL_ENDPOINT` | Yes | GraphQL API endpoint URL |
-| `GRAPHQL_AUTH_TOKEN` | No | Bearer token for authentication |
+| Variable             | Required    | Description                     |
+|----------------------|-------------|---------------------------------|
+| `GRAPHQL_ENDPOINT`   | Yes         | GraphQL API endpoint URL        |
+| `GRAPHQL_AUTH_TOKEN` | No          | Bearer token for authentication |
 
 ## Implementation Status
 
