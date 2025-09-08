@@ -1,4 +1,6 @@
+import { GraphQLClient } from 'graphql-request';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 
 // Mock graphql-request
 vi.mock('graphql-request', () => ({
@@ -7,8 +9,6 @@ vi.mock('graphql-request', () => ({
     options,
   })),
 }));
-
-import { GraphQLClient } from 'graphql-request';
 
 describe('client', () => {
   const originalEnv = process.env;
@@ -41,7 +41,7 @@ describe('client', () => {
       }).rejects.toThrow('GRAPHQL_ENDPOINT environment variable is required');
     });
 
-    it('should create client with no headers when no auth tokens provided', async () => {
+    it('should create client with default headers when no auth tokens provided', async () => {
       process.env.GRAPHQL_ENDPOINT = 'https://api.example.com/graphql';
       delete process.env.GRAPHQL_AUTH_TOKEN;
       delete process.env.GRAPHQL_COOKIE_HEADER;
@@ -49,7 +49,11 @@ describe('client', () => {
       const { client } = await import('../src/client.js');
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
-        headers: {},
+        headers: {
+          'content-type': 'application/json',
+          'accept': '*/*',
+          'user-agent': 'GraphQL-MCP-Server/1.0.0',
+        },
       });
     });
 
@@ -63,7 +67,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Authorization': 'Bearer test-bearer-token',
+          'authorization': 'Bearer test-bearer-token',
         },
       });
     });
@@ -78,7 +82,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Cookie': 'sessionId=abc123; token=xyz789',
+          'cookie': 'sessionId=abc123; token=xyz789',
         },
       });
     });
@@ -93,8 +97,8 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Authorization': 'Bearer test-bearer-token',
-          'Cookie': 'sessionId=abc123; token=xyz789',
+          'authorization': 'Bearer test-bearer-token',
+          'cookie': 'sessionId=abc123; token=xyz789',
         },
       });
     });
@@ -109,7 +113,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Cookie': 'sessionId=abc123',
+          'cookie': 'sessionId=abc123',
         },
       });
     });
@@ -124,7 +128,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Authorization': 'Bearer test-bearer-token',
+          'authorization': 'Bearer test-bearer-token',
         },
       });
     });
@@ -138,7 +142,11 @@ describe('client', () => {
       const { client } = await import('../src/client.js');
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
-        headers: {},
+        headers: {
+          'content-type': 'application/json',
+          'accept': '*/*',
+          'user-agent': 'GraphQL-MCP-Server/1.0.0',
+        },
       });
     });
 
@@ -152,7 +160,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Cookie': 'session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9; path=/; secure; httpOnly; sameSite=strict',
+          'cookie': 'session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9; path=/; secure; httpOnly; sameSite=strict',
         },
       });
     });
@@ -167,7 +175,7 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
         headers: {
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+          'authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
         },
       });
     });
@@ -181,7 +189,80 @@ describe('client', () => {
 
       expect(GraphQLClient).toHaveBeenCalledWith('https://different-api.example.com/v2/graphql', {
         headers: {
-          'Authorization': 'Bearer different-token',
+          'authorization': 'Bearer different-token',
+        },
+      });
+    });
+
+    it('should handle GRAPHQL_HEADER_* environment variables', async () => {
+      process.env.GRAPHQL_ENDPOINT = 'https://api.example.com/graphql';
+      process.env.GRAPHQL_HEADER_USER_AGENT = 'Custom-User-Agent/1.0';
+      process.env.GRAPHQL_HEADER_X_API_VERSION = 'v2';
+      delete process.env.GRAPHQL_AUTH_TOKEN;
+      delete process.env.GRAPHQL_COOKIE_HEADER;
+
+      vi.resetModules();
+      const { client } = await import('../src/client.js');
+
+      expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
+        headers: {
+          'user-agent': 'Custom-User-Agent/1.0',
+          'x-api-version': 'v2',
+        },
+      });
+    });
+
+    it('should combine GRAPHQL_HEADER_* with legacy auth tokens', async () => {
+      process.env.GRAPHQL_ENDPOINT = 'https://api.example.com/graphql';
+      process.env.GRAPHQL_HEADER_X_CLIENT_VERSION = '1.2.3';
+      process.env.GRAPHQL_AUTH_TOKEN = 'bearer-token';
+      process.env.GRAPHQL_COOKIE_HEADER = 'session=abc123';
+
+      vi.resetModules();
+      const { client } = await import('../src/client.js');
+
+      expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
+        headers: {
+          'x-client-version': '1.2.3',
+          'authorization': 'Bearer bearer-token',
+          'cookie': 'session=abc123',
+        },
+      });
+    });
+
+    it('should ignore empty GRAPHQL_HEADER_* values', async () => {
+      process.env.GRAPHQL_ENDPOINT = 'https://api.example.com/graphql';
+      process.env.GRAPHQL_HEADER_CUSTOM = 'value';
+      process.env.GRAPHQL_HEADER_EMPTY = '';
+      delete process.env.GRAPHQL_AUTH_TOKEN;
+      delete process.env.GRAPHQL_COOKIE_HEADER;
+
+      vi.resetModules();
+      const { client } = await import('../src/client.js');
+
+      expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
+        headers: {
+          'custom': 'value',
+        },
+      });
+    });
+
+    it('should convert header names from GRAPHQL_HEADER_* format correctly', async () => {
+      process.env.GRAPHQL_ENDPOINT = 'https://api.example.com/graphql';
+      process.env.GRAPHQL_HEADER_CONTENT_TYPE = 'application/graphql';
+      process.env.GRAPHQL_HEADER_X_FORWARDED_FOR = '127.0.0.1';
+      process.env.GRAPHQL_HEADER_ACCEPT_ENCODING = 'gzip';
+      delete process.env.GRAPHQL_AUTH_TOKEN;
+      delete process.env.GRAPHQL_COOKIE_HEADER;
+
+      vi.resetModules();
+      const { client } = await import('../src/client.js');
+
+      expect(GraphQLClient).toHaveBeenCalledWith('https://api.example.com/graphql', {
+        headers: {
+          'content-type': 'application/graphql',
+          'x-forwarded-for': '127.0.0.1',
+          'accept-encoding': 'gzip',
         },
       });
     });

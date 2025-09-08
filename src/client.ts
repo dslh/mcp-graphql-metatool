@@ -10,7 +10,7 @@ function buildHeaders(): Record<string, string> {
       const headerName = key
         .replace('GRAPHQL_HEADER_', '')
         .toLowerCase()
-        .replace(/_/g, '-');
+        .replaceAll('_', '-');
       
       headers[headerName] = value;
     }
