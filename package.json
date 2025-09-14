@@ -19,7 +19,7 @@
   "author": "Doug Hammond <d.lakehammond@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.15.1",
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "ajv": "^8.17.1",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
