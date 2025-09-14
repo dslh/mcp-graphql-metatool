@@ -1,5 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { IntrospectionQuery } from 'graphql';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Import after mocks
+import { client } from '../src/client.js';
+import { withErrorHandling } from '../src/responses.js';
+import { getSchema, validateGraphQLQuery, clearSchemaCache } from '../src/schemaService.js';
 
 // Mock the GraphQL client
 vi.mock('../src/client.js', () => ({
@@ -12,11 +17,6 @@ vi.mock('../src/client.js', () => ({
 vi.mock('../src/responses.js', () => ({
   withErrorHandling: vi.fn(),
 }));
-
-// Import after mocks
-import { getSchema, validateGraphQLQuery, clearSchemaCache } from '../src/schemaService.js';
-import { client } from '../src/client.js';
-import { withErrorHandling } from '../src/responses.js';
 
 // Get mocked functions for manipulation in tests
 const mockClient = vi.mocked(client);

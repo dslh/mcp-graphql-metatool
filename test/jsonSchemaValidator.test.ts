@@ -276,11 +276,11 @@ describe('jsonSchemaValidator', () => {
       
       // Test required field validation
       expect(() => zodFields['requiredField']?.parse('valid')).not.toThrow();
-      expect(() => zodFields['requiredField']?.parse(undefined)).toThrow();
+      expect(() => zodFields['requiredField']?.parse()).toThrow();
       
       // Test optional field validation
       expect(() => zodFields['optionalField']?.parse('valid')).not.toThrow();
-      expect(() => zodFields['optionalField']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['optionalField']?.parse()).not.toThrow();
     });
 
     it('should handle optional fields with default values', () => {
@@ -297,14 +297,14 @@ describe('jsonSchemaValidator', () => {
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
       // Required field should not accept undefined
-      expect(() => zodFields['requiredField']?.parse(undefined)).toThrow();
+      expect(() => zodFields['requiredField']?.parse()).toThrow();
       
       // Optional with default should use default when undefined
-      const resultWithDefault = zodFields['optionalWithDefault']?.parse(undefined);
+      const resultWithDefault = zodFields['optionalWithDefault']?.parse();
       expect(resultWithDefault).toBe(10);
       
       // Optional without default should accept undefined
-      expect(() => zodFields['optionalNoDefault']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['optionalNoDefault']?.parse()).not.toThrow();
     });
 
     it('should handle mixed required and optional parameters', () => {
@@ -322,14 +322,14 @@ describe('jsonSchemaValidator', () => {
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
       // Required fields should reject undefined
-      expect(() => zodFields['pipelineId']?.parse(undefined)).toThrow();
-      expect(() => zodFields['workspaceId']?.parse(undefined)).toThrow();
+      expect(() => zodFields['pipelineId']?.parse()).toThrow();
+      expect(() => zodFields['workspaceId']?.parse()).toThrow();
       
       // Optional with default should use default
-      expect(zodFields['limit']?.parse(undefined)).toBe(10);
+      expect(zodFields['limit']?.parse()).toBe(10);
       
       // Optional without default should accept undefined
-      expect(() => zodFields['repositoryIds']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['repositoryIds']?.parse()).not.toThrow();
     });
 
     it('should handle schema with no required array', () => {
@@ -345,8 +345,8 @@ describe('jsonSchemaValidator', () => {
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
       // Both fields should accept undefined
-      expect(() => zodFields['field1']?.parse(undefined)).not.toThrow();
-      expect(zodFields['field2']?.parse(undefined)).toBe(5);
+      expect(() => zodFields['field1']?.parse()).not.toThrow();
+      expect(zodFields['field2']?.parse()).toBe(5);
     });
 
     it('should handle schema with empty required array', () => {
@@ -362,8 +362,8 @@ describe('jsonSchemaValidator', () => {
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
       // All fields should be optional
-      expect(() => zodFields['field1']?.parse(undefined)).not.toThrow();
-      expect(() => zodFields['field2']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['field1']?.parse()).not.toThrow();
+      expect(() => zodFields['field2']?.parse()).not.toThrow();
     });
 
     it('should handle default values of different types', () => {
@@ -381,11 +381,11 @@ describe('jsonSchemaValidator', () => {
 
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
-      expect(zodFields['stringDefault']?.parse(undefined)).toBe('hello');
-      expect(zodFields['numberDefault']?.parse(undefined)).toBe(42.5);
-      expect(zodFields['integerDefault']?.parse(undefined)).toBe(100);
-      expect(zodFields['booleanDefault']?.parse(undefined)).toBe(true);
-      expect(zodFields['arrayDefault']?.parse(undefined)).toEqual(['item']);
+      expect(zodFields['stringDefault']?.parse()).toBe('hello');
+      expect(zodFields['numberDefault']?.parse()).toBe(42.5);
+      expect(zodFields['integerDefault']?.parse()).toBe(100);
+      expect(zodFields['booleanDefault']?.parse()).toBe(true);
+      expect(zodFields['arrayDefault']?.parse()).toEqual(['item']);
     });
 
     it('should handle the get_pipeline_issues bug scenario', () => {
@@ -418,14 +418,14 @@ describe('jsonSchemaValidator', () => {
       const zodFields = convertJsonSchemaToMcpZod(schema);
       
       // Required fields should reject undefined
-      expect(() => zodFields['pipelineId']?.parse(undefined)).toThrow();
-      expect(() => zodFields['workspaceId']?.parse(undefined)).toThrow();
+      expect(() => zodFields['pipelineId']?.parse()).toThrow();
+      expect(() => zodFields['workspaceId']?.parse()).toThrow();
       
       // limit should have default value
-      expect(zodFields['limit']?.parse(undefined)).toBe(10);
+      expect(zodFields['limit']?.parse()).toBe(10);
       
       // repositoryIds should be optional
-      expect(() => zodFields['repositoryIds']?.parse(undefined)).not.toThrow();
+      expect(() => zodFields['repositoryIds']?.parse()).not.toThrow();
       
       // Test valid values work too
       expect(() => zodFields['pipelineId']?.parse('pipeline123')).not.toThrow();

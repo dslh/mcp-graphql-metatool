@@ -1,5 +1,19 @@
+
+
+// Import the mocked modules
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Import the functions to test
+import {
+  ensureDataDirectory,
+  saveToolToFile,
+  loadToolFromFile,
+  loadAllTools,
+  deleteToolFile,
+} from '../src/storage.js';
 import type { SavedToolConfig } from '../src/types.js';
 
 // Mock Node.js fs and path modules
@@ -27,19 +41,6 @@ vi.mock('node:path', async (importOriginal) => {
     default: mocks,
   };
 });
-
-// Import the mocked modules
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
-
-// Import the functions to test
-import {
-  ensureDataDirectory,
-  saveToolToFile,
-  loadToolFromFile,
-  loadAllTools,
-  deleteToolFile,
-} from '../src/storage.js';
 
 describe('storage', () => {
   beforeEach(() => {
@@ -178,7 +179,7 @@ describe('storage', () => {
 
     it('should format JSON with proper indentation', () => {
       vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(writeFileSync).mockReturnValue(undefined); // Ensure writeFileSync doesn't throw
+      vi.mocked(writeFileSync).mockReturnValue(); // Ensure writeFileSync doesn't throw
 
       saveToolToFile('test_tool', validToolConfig);
 
@@ -463,7 +464,7 @@ describe('storage', () => {
 
     it('should handle special characters in tool names', () => {
       vi.mocked(existsSync).mockReturnValue(true);
-      vi.mocked(unlinkSync).mockReturnValue(undefined); // Ensure unlinkSync doesn't throw
+      vi.mocked(unlinkSync).mockReturnValue(); // Ensure unlinkSync doesn't throw
 
       deleteToolFile('tool-with_special.chars');
 

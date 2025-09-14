@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 
+import { client } from '../src/client.js';
 import { createDynamicToolHandler } from '../src/dynamicToolHandler.js';
 import type { SavedToolConfig } from '../src/types.js';
+
+// Import the mocked client
 
 // Mock the client before importing the handler
 vi.mock('../src/client.js', () => ({
@@ -10,9 +13,6 @@ vi.mock('../src/client.js', () => ({
     request: vi.fn(),
   },
 }));
-
-// Import the mocked client
-import { client } from '../src/client.js';
 
 describe('dynamicToolHandler', () => {
   beforeEach(() => {
