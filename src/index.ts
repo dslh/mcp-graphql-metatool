@@ -3,19 +3,9 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { server, registeredTools } from './server.js';
-import * as deleteSavedQuery from './tools/deleteSavedQuery.js';
-import * as listSavedQueries from './tools/listSavedQueries.js';
-import * as saveQuery from './tools/saveQuery.js';
-import * as showSavedQuery from './tools/showSavedQuery.js';
 
 async function main(): Promise<void> {
   try {
-    // Register tool management tools
-    server.registerTool(saveQuery.name, saveQuery.config, saveQuery.handler);
-    server.registerTool(deleteSavedQuery.name, deleteSavedQuery.config, deleteSavedQuery.handler);
-    server.registerTool(listSavedQueries.name, listSavedQueries.config, listSavedQueries.handler);
-    server.registerTool(showSavedQuery.name, showSavedQuery.config, showSavedQuery.handler);
-
     const transport = new StdioServerTransport();
     console.error(`"Starting GraphQL MCP Metatool with ${registeredTools.size} saved tools"`);
     await server.connect(transport);
