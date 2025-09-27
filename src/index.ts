@@ -2,12 +2,12 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { server, registeredTools } from './server.js';
+import { server, registeredTools, coreToolsStatus } from './server.js';
 
 async function main(): Promise<void> {
   try {
     const transport = new StdioServerTransport();
-    console.error(`"Starting GraphQL MCP Metatool with ${registeredTools.size} saved tools"`);
+    console.error(`Starting GraphQL MCP Metatool: ${coreToolsStatus}, ${registeredTools.size} saved tools loaded`);
     await server.connect(transport);
   } catch (error) {
     console.error('Failed to start GraphQL MCP server:', error);

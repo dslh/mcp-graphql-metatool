@@ -91,6 +91,19 @@ export GRAPHQL_COOKIE_HEADER="sessionId=abc123; token=xyz789"
 
 **Note:** `GRAPHQL_HEADER_*` variables take precedence over legacy variables.
 
+### Tool Management
+
+Control which core tools are available:
+
+```bash
+# Disable core tools once you have your custom suite
+export DISABLE_CORE_TOOLS="management"  # Disable save/delete/list/show tools, keep execute_graphql_query
+export DISABLE_CORE_TOOLS="all"         # Disable all core tools
+export DISABLE_CORE_TOOLS="none"        # Default: all core tools enabled
+```
+
+This is useful when you've built a comprehensive suite of saved queries and want to streamline your tool list. The `management` option keeps `execute_graphql_query` for ad-hoc queries while removing the tool management clutter.
+
 ## Quick Start
 
 1. **Start the server:**
