@@ -244,7 +244,7 @@ The server is built with a modular architecture:
 
 ### Data Persistence
 
-Tools are persisted as individual JSON files in the `data/tools/` directory:
+Tools are persisted as individual JSON files in the `data/tools/` directory. By default this is relative to the server's working directory, but you can set `MCP_GRAPHQL_DATA_DIR` to use a custom location:
 
 ```
 data/
@@ -300,6 +300,7 @@ yarn test:ui
 | `GRAPHQL_HEADER_*`      | No          | HTTP headers (see Header Configuration) |
 | `GRAPHQL_AUTH_TOKEN`    | No          | Legacy: Bearer token for authentication |
 | `GRAPHQL_COOKIE_HEADER` | No          | Legacy: Cookie header for authentication |
+| `MCP_GRAPHQL_DATA_DIR`  | No          | Directory for saved tools and types (default: `./data`) |
 
 ## Implementation Status
 
