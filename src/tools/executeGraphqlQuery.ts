@@ -10,16 +10,30 @@ export const config = {
   description: 'Execute arbitrary GraphQL queries against the configured endpoint',
   inputSchema: {
     query: z.string().describe('The GraphQL query to execute'),
+    variables: z
+      .string()
+      .optional()
+      .describe('JSON-encoded variables object for the query (e.g. {"id": "123"})'),
   },
 };
 
 export const handler = ({
   query,
+  variables,
 }: {
   query: string;
+  variables?: string | undefined;
 }): Promise<{ content: { type: 'text'; text: string }[]; isError?: boolean }> => {
   return withErrorHandling('executing GraphQL query', async () => {
-    const result = await client.request(query);
+    let parsedVariables: Record<string, unknown> | undefined;
+    if (variables !== undefined && variables !== '') {
+      try {
+        parsedVariables = JSON.parse(variables) as Record<string, unknown>;
+      } catch {
+        throw new TypeError(`Invalid JSON in variables parameter: ${variables}`);
+      }
+    }
+    const result = await client.request(query, parsedVariables);
     return JSON.stringify(result, null, 2);
   });
 };

@@ -38,7 +38,7 @@ describe('executeGraphqlQuery handler', () => {
 
     const result = await handler({ query });
 
-    expect(mockClient.request).toHaveBeenCalledWith(query);
+    expect(mockClient.request).toHaveBeenCalledWith(query, undefined);
     expect(mockClient.request).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       content: [
@@ -59,7 +59,7 @@ describe('executeGraphqlQuery handler', () => {
 
     const result = await handler({ query });
 
-    expect(mockClient.request).toHaveBeenCalledWith(query);
+    expect(mockClient.request).toHaveBeenCalledWith(query, undefined);
     expect(result).toEqual({
       content: [
         {
@@ -79,7 +79,7 @@ describe('executeGraphqlQuery handler', () => {
 
     const result = await handler({ query });
 
-    expect(mockClient.request).toHaveBeenCalledWith(query);
+    expect(mockClient.request).toHaveBeenCalledWith(query, undefined);
     expect(result).toEqual({
       content: [
         {
@@ -98,7 +98,7 @@ describe('executeGraphqlQuery handler', () => {
 
     const result = await handler({ query });
 
-    expect(mockClient.request).toHaveBeenCalledWith(query);
+    expect(mockClient.request).toHaveBeenCalledWith(query, undefined);
     expect(result).toEqual({
       content: [
         {
@@ -218,6 +218,45 @@ describe('executeGraphqlQuery handler', () => {
 
     await handler({ query: queryWithWhitespace });
 
-    expect(mockClient.request).toHaveBeenCalledWith(queryWithWhitespace);
+    expect(mockClient.request).toHaveBeenCalledWith(queryWithWhitespace, undefined);
+  });
+
+  it('should pass parsed variables to the client', async () => {
+    const mockData = { user: { id: '123', name: 'Alice' } };
+    mockClient.request.mockResolvedValueOnce(mockData);
+
+    const query = 'query GetUser($id: ID!) { user(id: $id) { id name } }';
+    const variables = '{"id": "123"}';
+
+    const result = await handler({ query, variables });
+
+    expect(mockClient.request).toHaveBeenCalledWith(query, { id: '123' });
+    expect(result).toEqual({
+      content: [{ type: 'text', text: JSON.stringify(mockData, null, 2) }],
+    });
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should work without variables (backwards compatible)', async () => {
+    const mockData = { test: true };
+    mockClient.request.mockResolvedValueOnce(mockData);
+
+    const query = 'query { test }';
+
+    const result = await handler({ query });
+
+    expect(mockClient.request).toHaveBeenCalledWith(query, undefined);
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('should return an error for invalid JSON in variables', async () => {
+    const query = 'query GetUser($id: ID!) { user(id: $id) { id } }';
+    const variables = '{bad json}';
+
+    const result = await handler({ query, variables });
+
+    expect(mockClient.request).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Invalid JSON in variables parameter');
   });
 });
